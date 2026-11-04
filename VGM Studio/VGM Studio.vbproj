@@ -1,0 +1,79 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup Label="Globals">
+    <SccProjectName>SAK</SccProjectName>
+    <SccProvider>SAK</SccProvider>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>VGM_Studio</RootNamespace>
+    <UseWPF>True</UseWPF>
+    <ImportedNamespaces>System.Windows=False,System.Windows.Controls=False,System.Windows.Data=False,System.Windows.Documents=False,System.Windows.Input=False,System.Windows.Media=False,System.Windows.Media.Imaging=False,System.Windows.Navigation=False,System.Windows.Shapes=False,Microsoft.VisualBasic=True,System=True,System.Collections=True,System.Collections.Generic=True,System.Diagnostics=True,System.Linq=True,System.Xml.Linq=True,System.Threading.Tasks=True,VGM Studio=True</ImportedNamespaces>
+    <UseWindowsForms>False</UseWindowsForms>
+    <AssemblyTitle>VGM Studio</AssemblyTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Import Include="System.Windows" />
+    <Import Include="System.Windows.Controls" />
+    <Import Include="System.Windows.Data" />
+    <Import Include="System.Windows.Documents" />
+    <Import Include="System.Windows.Input" />
+    <Import Include="System.Windows.Media" />
+    <Import Include="System.Windows.Media.Imaging" />
+    <Import Include="System.Windows.Navigation" />
+    <Import Include="System.Windows.Shapes" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chips\Chips.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="My Project\Settings.Designer.vb">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ExportWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="HomePage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="HomeWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="My Project\Settings.settings">
+      <CustomToolNamespace>My</CustomToolNamespace>
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+    <None Update="SingleExportWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="VGMEventsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="VGMInfoPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="VGMSingleExportPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="VGMVoicesPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="ZipArchiveEntrySelectionWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+  </ItemGroup>
+
+</Project>

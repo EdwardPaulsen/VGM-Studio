@@ -1,0 +1,42 @@
+﻿<Application x:Class="Application"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/netfx/2009/xaml/presentation"
+             xmlns:local="clr-namespace:VGM_Studio"
+             ThemeMode="System"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Support for Windows Themes -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
+                <d:ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Support for Windows Themes -->
+            <Style TargetType="{x:Type Control}">
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                <d:Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+            </Style>
+            <Style TargetType="{x:Type Label}">
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                <d:Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+            </Style>
+            <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                <d:Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+            </Style>
+            <!--<Style TargetType="{x:Type Button}">
+                <d:Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                <d:Setter Property="Background" Value="#00000000"/>
+                --><!--<d:Style.Triggers>
+                    <d:Trigger Property="IsEnabled" Value="False">
+                        <d:Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                        <d:Setter Property="Background" Value="#00000000"/>
+                    </d:Trigger>
+                </d:Style.Triggers>--><!--
+            </Style>-->
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
