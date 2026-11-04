@@ -15,7 +15,7 @@ Version 0.9 (Nov 3, 2026)
 - Initial public release
 - Features:
   - View info and events contained in VGM music log files (full support up to VGM 1.61, partial support for 1.70 and above) 
-  - Export FM voices to Yamaha DX-7 compatible .SYX files for use with Dexed or an actual DX-7
+  - Export OPM and OPN FM voices to Yamaha DX-7 compatible .SYX files for use with Dexed or an actual DX-7
   - Preview voices from PCM-based chips
   - Export chip events to .MID and .WAV
   - Mostly-reliable automatic tempo detection for midi files
@@ -29,9 +29,11 @@ Version 0.9 (Nov 3, 2026)
   - SegaPCM (WIP MIDI export; WAV export via internal emulator)
   - Ricoh RFC5164 (WIP MIDI support; WAV export via internal emulator)
 - Planned features:
+  - Support for the full VGM 1.72 spec
   - PCM voice export
   - Custom mapping of PCM voices to MIDI instruments/notes
+  - Support for dual-chip VGMs
   - Support for more sound chips
 - Issues:
   - Some menu commands are available, but don't actually do anything.
-  - Nuked-OPM puts out really buggy sound. I'm sure I made some logic mistakes porting it over from C.
+  - My port of Nuked-OPM puts out really buggy sound.
