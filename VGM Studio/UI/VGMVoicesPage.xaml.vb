@@ -191,8 +191,8 @@ Class VGMVoicesPage
 
     Private Sub RFC5164VoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles RFC5164VoiceComboBox.SelectionChanged
         If ViewModel.RFC5164Voices?.Count > 0 Then
-            With RFC5164VoiceAddrIncComboBox
-                .ItemsSource = ViewModel.RFC5164Voice.AddrIncs
+            With RFC5164VoiceSpeedComboBox
+                .ItemsSource = ViewModel.RFC5164Voice.Speeds
                 .SelectedIndex = 0
             End With
         End If
@@ -200,8 +200,8 @@ Class VGMVoicesPage
 
     Private Sub SegaPCMVoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles SegaPCMVoiceComboBox.SelectionChanged
         If ViewModel.SegaPCMVoices?.Count > 0 Then
-            With SegaPCMVoiceAddrIncComboBox
-                .ItemsSource = ViewModel.SegaPCMVoice.AddrIncs
+            With SegaPCMVoiceSpeedComboBox
+                .ItemsSource = ViewModel.SegaPCMVoice.Speeds
                 .SelectedIndex = 0
             End With
         End If
@@ -242,7 +242,7 @@ Class VGMVoicesPage
         Next
 
         'Play sound
-        Dim sampleRate As Integer = (ViewModel.VGMFile.RF5C164Clock / 384) * (ViewModel.RFC5164VoiceAddrInc / 2048)
+        Dim sampleRate As Integer = (ViewModel.VGMFile.RF5C164Clock / 384) * (ViewModel.RFC5164VoiceSpeed / 100)
         Dim numChannels As Integer = 1
         Dim wf As New WAV.WAVFile(sampleRate, pcmData, numChannels)
         Using stream As New MemoryStream
@@ -266,7 +266,7 @@ Class VGMVoicesPage
         Next
 
         'Play sound
-        Dim sampleRate As Integer = (ViewModel.VGMFile.SegaPCMClock / 128) * (ViewModel.SegaPCMVoiceAddrInc / 255)
+        Dim sampleRate As Integer = (ViewModel.VGMFile.SegaPCMClock / 128) * (ViewModel.SegaPCMVoiceSpeed / 100)
         Dim numChannels As Integer = 1
         Dim wf As New WAV.WAVFile(sampleRate, pcmData, numChannels)
         Using stream As New MemoryStream
@@ -467,6 +467,17 @@ Public Class VoicesPageViewModel
         End Set
     End Property
 
+    Private _RFC5164VoiceSpeed As Single
+    Public Property RFC5164VoiceSpeed As Single
+        Get
+            Return _RFC5164VoiceSpeed
+        End Get
+        Set(value As Single)
+            _RFC5164VoiceSpeed = value
+            NotifyPropertyChanged()
+        End Set
+    End Property
+
     'Sega PCM Voices
     Private _SegaPCMVoices As Dictionary(Of Long, SegaPCM.Voice)
     Public ReadOnly Property SegaPCMVoiceChannels As New List(Of SortedSet(Of Integer))
@@ -498,6 +509,17 @@ Public Class VoicesPageViewModel
         End Get
         Set(value As UInteger)
             _SegaPCMVoiceAddrInc = value
+            NotifyPropertyChanged()
+        End Set
+    End Property
+
+    Private _SegaPCMVoiceSpeed As Single
+    Public Property SegaPCMVoiceSpeed As Single
+        Get
+            Return _SegaPCMVoiceSpeed
+        End Get
+        Set(value As Single)
+            _SegaPCMVoiceSpeed = value
             NotifyPropertyChanged()
         End Set
     End Property
@@ -584,9 +606,9 @@ Public Class VoicesPageViewModel
                                  )
 
         Dim tFaulted As Task =
-                    t.ContinueWith(Sub()
-                                       MessageBox.Show("Faulted")
-                                   End Sub,
+                                    t.ContinueWith(Sub()
+                                                       MessageBox.Show("Faulted")
+                                                   End Sub,
                                  TaskContinuationOptions.OnlyOnFaulted Or TaskContinuationOptions.ExecuteSynchronously
                                  )
 

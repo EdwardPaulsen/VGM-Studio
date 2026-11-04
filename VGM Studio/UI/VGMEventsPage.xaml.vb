@@ -288,7 +288,7 @@ Class VGMEventsPage
                             (key / 44100) * 1000
                         Dim count As Long =
                             ViewModel.NoteGapLengths(key)
-                        If NoteLengthsInMillisecs.Keys.Contains(length) Then
+                        If NoteLengthsInMillisecs.ContainsKey(length) Then
                             NoteLengthsInMillisecs(length) += count
                         Else
                             NoteLengthsInMillisecs.Add(length, count)

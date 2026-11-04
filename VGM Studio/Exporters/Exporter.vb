@@ -1,7 +1,6 @@
 ﻿Imports System.Threading
 Imports VGM_Studio.VGM
 Imports VGM_Studio.Midi
-Imports VGM_Studio.RFC5164
 
 Public Class ExportOptions
     Public Property SampleRateScale As Integer = 1
@@ -1199,27 +1198,27 @@ cmd.Value(2)
 #End Region
 
 #Region "RFC5164 Event Handlers"
-    Protected Overridable Sub RFC5164Chip_EnvelopeChanged(ByRef ch As PCMChannel) Handles RFC5164Chip.EnvelopeChanged
+    Protected Overridable Sub RFC5164Chip_EnvelopeChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.EnvelopeChanged
         With ch
             Details = $"Ch { .Index + 1} Envelope = { .Envelope}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_PanChanged(ByRef ch As PCMChannel) Handles RFC5164Chip.PanChanged
+    Protected Overridable Sub RFC5164Chip_PanChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.PanChanged
         With ch
             Details = $"Ch { .Index + 1} Pan: L { .Pan(0)}, R { .Pan(1)}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_AddressIncrementChanged(ByRef ch As PCMChannel) Handles RFC5164Chip.AddressIncrementChanged
+    Protected Overridable Sub RFC5164Chip_AddressIncrementChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.AddressIncrementChanged
         With ch
-            Details = $"Ch { .Index + 1} Sample Rate = 0x{ .AddrInc:X4} ({ .SampleRateInHz(.Chip.IntSampleClockFreq):0.000} Hz)"
+            Details = $"Ch { .Index + 1} Sample Rate = 0x{ .AddrInc:X4} ({ RFC5164.GetSampleRateInHz(.AddrInc, .Chip.MasterClockFreq):0.000} Hz)"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_LoopAddressChanged(ByRef ch As PCMChannel) Handles RFC5164Chip.LoopAddressChanged
+    Protected Overridable Sub RFC5164Chip_LoopAddressChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.LoopAddressChanged
         With ch
             Details = $"Ch { .Index + 1} Loop Address 0x{ .LoopAddr:X4}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_StartAddressChanged(ByRef ch As PCMChannel) Handles RFC5164Chip.StartAddressChanged
+    Protected Overridable Sub RFC5164Chip_StartAddressChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.StartAddressChanged
         With ch
             Details = $"Ch { .Index + 1} Start Address 0x{ .StartAddr:X4}"
         End With

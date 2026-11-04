@@ -8,6 +8,15 @@ Public Class SegaPCM
 
 #Region "Constants"
 
+    Public Const Ch_Count As Integer = 8
+
+    'Current address is 16.8 fixed-point decimal
+    Const INT_BITS As UInteger = 16
+    Const FRAC_BITS As UInteger = 8
+    Const TOTAL_BITS As UInteger = INT_BITS + FRAC_BITS
+
+    Public Const ADDR_INC_MAX As UInteger = (1 << FRAC_BITS) - 1
+
 #End Region
 
 #Region "Shared Methods"
@@ -160,6 +169,7 @@ Public Class SegaPCM
         Public ReadOnly Property LoopAddr As UInteger
         Public ReadOnly Property Data As Byte()
         Public ReadOnly Property AddrIncs As SortedSet(Of UInteger)
+        Public ReadOnly Property Speeds As SortedSet(Of Single)
         Public ReadOnly Property Length As UInteger
             Get
                 Return EndAddr - StartAddr
@@ -184,6 +194,7 @@ Public Class SegaPCM
                 Array.Copy(pcmData, startAddr, _Data, 0, length)
             End If
             AddrIncs = New SortedSet(Of UInteger)
+            Speeds = New SortedSet(Of Single)
         End Sub
         Sub New(sample As Long, ByRef ch As Channel, ByRef pcmdata As Byte())
             Me.New(sample, ch.Bank + ch.StartAddr, ch.Bank + ch.EndAddr, ch.Bank + ch.LoopAddr, pcmdata)

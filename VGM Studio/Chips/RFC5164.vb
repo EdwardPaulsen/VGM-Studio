@@ -18,6 +18,8 @@ Public Class RFC5164
     Const TOTAL_BITS As UInteger = INT_BITS + FRAC_BITS
     Const LOOP_END = &HFF
 
+    Public Const ADDR_INC_MAX As UInteger = (1 << FRAC_BITS) - 1
+
 #End Region
 
 #Region "Shared Methods"
@@ -47,6 +49,10 @@ Public Class RFC5164
         out = Math.Clamp(out, Short.MinValue, Short.MaxValue)
 
         Return out / Short.MaxValue
+    End Function
+
+    Shared Function GetSampleRateInHz(addrInc As UInteger, masterClockFreq As Single) As Single
+        Return masterClockFreq / 384 * (addrInc / 2047) '(1 << 11) - 1
     End Function
 
 #End Region
@@ -115,13 +121,6 @@ Public Class RFC5164
         Public PrevAddr As UInteger
         Public Addr As UInteger            'Current address in 16.11 fixed-point decimal
         Public AddrInc As UInteger         'Address increment in 5.11 fixed-point decimal
-        ReadOnly Property SampleRateInHz(sampleClockFreq As Double) As Double
-            Get
-                Dim samplesPerCycle As Double =
-                    sampleClockFreq * (AddrInc / 2047) '(1 << 11) - 1
-                Return samplesPerCycle
-            End Get
-        End Property
 
         Public StartAddr As UInteger       'Start address as a 16-bit integer
         Public LoopAddr As UInteger        'Loop address as a 16-bit integer
@@ -190,13 +189,17 @@ Public Class RFC5164
 
     Public Structure Voice
         Public ReadOnly Property Index As Long
+        Public ReadOnly Property MasterClockFreq As UInteger
         Public ReadOnly Property StartAddr As UInteger
         Public ReadOnly Property EndAddr As UInteger
         Public ReadOnly Property LoopAddr As UInteger
         Public ReadOnly Property Data As Byte()
         Public ReadOnly Property AddrIncs As SortedSet(Of UInteger)
-        Sub New(index As Long, startAddr As UInteger, loopAddr As UInteger, ByRef pcmData As Byte())
+        Public ReadOnly Property Speeds As SortedSet(Of Single)
+
+        Sub New(index As Long, ByRef chip As Chip, startAddr As UInteger, loopAddr As UInteger, ByRef pcmData As Byte())
             _Index = index
+            _MasterClockFreq = chip.MasterClockFreq
             _StartAddr = startAddr << 8
             _LoopAddr = loopAddr
             'Get PCM data
@@ -229,9 +232,10 @@ Public Class RFC5164
                 Array.Copy(list.ToArray, _Data, length)
             End If
             AddrIncs = New SortedSet(Of UInteger)
+            Speeds = New SortedSet(Of Single)
         End Sub
         Sub New(sample As Long, ByRef ch As PCMChannel, ByRef pcmData As Byte())
-            Me.New(sample, ch.StartAddr, ch.LoopAddr, pcmData)
+            Me.New(sample, ch.Chip, ch.StartAddr, ch.LoopAddr, pcmData)
         End Sub
         Public Overrides Function GetHashCode() As Integer
             Return HashCode.Combine(StartAddr, LoopAddr)

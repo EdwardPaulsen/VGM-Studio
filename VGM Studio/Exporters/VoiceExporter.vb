@@ -40,7 +40,11 @@ Public Class VoiceExporter
                             Next
                         End If
                         If add Then
-                            YM2612PCMVoices.Add(CurrentSample, thisVoice)
+                            Dim newKey As Long = CurrentSample
+                            While YM2612PCMVoices.ContainsKey(newKey)
+                                newKey += 1
+                            End While
+                            YM2612PCMVoices.Add(newKey, thisVoice)
                         End If
                     End If
                 End With
@@ -67,11 +71,11 @@ Public Class VoiceExporter
                 End If
             Next
             If add Then
-                If OPNVoices.Keys.Contains(CurrentSample) Then
-                    OPNVoices.Add(CurrentSample + 1, ThisOPNVoice)
-                Else
-                    OPNVoices.Add(CurrentSample, ThisOPNVoice)
-                End If
+                Dim newKey As Long = CurrentSample
+                While OPNVoices.ContainsKey(newKey)
+                    newKey += 1
+                End While
+                OPNVoices.Add(newKey, ThisOPNVoice)
             End If
         End If
     End Sub
@@ -94,11 +98,11 @@ Public Class VoiceExporter
                 End If
             Next
             If add Then
-                If OPMVoices.Keys.Contains(CurrentSample) Then
-                    OPMVoices.Add(CurrentSample + 1, ThisOPMVoice)
-                Else
-                    OPMVoices.Add(CurrentSample, ThisOPMVoice)
-                End If
+                Dim newKey As Long = CurrentSample
+                While OPMVoices.ContainsKey(newKey)
+                    newKey += 1
+                End While
+                OPMVoices.Add(newKey, ThisOPMVoice)
             End If
         End If
     End Sub
@@ -122,6 +126,10 @@ Public Class VoiceExporter
                         With SegaPCMVoices(key).AddrIncs
                             If Not .Contains(addrInc) Then
                                 .Add(addrInc)
+                                'Also add speed as a percentage
+                                Dim speed As Single =
+                                    (addrInc / SegaPCM.ADDR_INC_MAX) * 100
+                                SegaPCMVoices(key).Speeds.Add(speed)
                             End If
                         End With
                         voiceExists = True
@@ -176,6 +184,10 @@ Public Class VoiceExporter
                             With RFC5164Voices(key).AddrIncs
                                 If Not .Contains(addrInc) Then
                                     .Add(addrInc)
+                                    'Also add speed as a percentage
+                                    Dim speed As Single =
+                                        (addrInc / RFC5164.ADDR_INC_MAX) * 100
+                                    RFC5164Voices(key).Speeds.Add(speed)
                                 End If
                             End With
                             voiceExists = True

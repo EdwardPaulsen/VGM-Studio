@@ -37,7 +37,7 @@ Public Class CSVExporter
         (key / VGM_Sample_Rate) * 1000
             Dim count As Long =
                 NoteGapLengths(key)
-            If NoteLengthsInMillisecs.Keys.Contains(length) Then
+            If NoteLengthsInMillisecs.ContainsKey(length) Then
                 NoteLengthsInMillisecs(length) += count
             Else
                 NoteLengthsInMillisecs.Add(length, count)
