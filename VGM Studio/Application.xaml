@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/netfx/2009/xaml/presentation"
              xmlns:local="clr-namespace:VGM_Studio"
              ThemeMode="System"
-             StartupUri="MainWindow.xaml">
+             StartupUri="UI\MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <!-- Support for Windows Themes -->
