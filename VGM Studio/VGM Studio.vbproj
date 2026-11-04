@@ -15,6 +15,16 @@
     <ImportedNamespaces>System.Windows=False,System.Windows.Controls=False,System.Windows.Data=False,System.Windows.Documents=False,System.Windows.Input=False,System.Windows.Media=False,System.Windows.Media.Imaging=False,System.Windows.Navigation=False,System.Windows.Shapes=False,Microsoft.VisualBasic=True,System=True,System.Collections=True,System.Collections.Generic=True,System.Diagnostics=True,System.Linq=True,System.Xml.Linq=True,System.Threading.Tasks=True,VGM Studio=True</ImportedNamespaces>
     <UseWindowsForms>False</UseWindowsForms>
     <AssemblyTitle>VGM Studio</AssemblyTitle>
+    <AssemblyVersion>0.9.0.0</AssemblyVersion>
+    <FileVersion>0.9.0.0</FileVersion>
+    <Copyright>Copyright © 1999 – 2026 Paul Jensen</Copyright>
+    <Description>A tool for viewing, extracting, and converting sound data from VGM music log files</Description>
+    <PackageProjectUrl>https://github.com/EdwardPaulsen/VGM-Studio/</PackageProjectUrl>
+    <PackageIcon>ym2612.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/EdwardPaulsen/VGM-Studio.git</RepositoryUrl>
+    <PackageTags>VGM; chiptunes</PackageTags>
+    <PackageReleaseNotes>Initial public release</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +37,13 @@
     <Import Include="System.Windows.Media.Imaging" />
     <Import Include="System.Windows.Navigation" />
     <Import Include="System.Windows.Shapes" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -55,6 +72,10 @@
       <CustomToolNamespace>My</CustomToolNamespace>
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+    <None Update="Resources\ym2612.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
     </None>
     <None Update="SingleExportWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
