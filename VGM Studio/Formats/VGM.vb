@@ -826,6 +826,25 @@ Public Class VGM
         YMF262_Port_0 = &H5E
         YMF262_Port_1 = &H5F
 
+        'Dual chip cupport for PSG and YM-family chips (see Dual Chip Support #1)
+        GG_Stereo_2 = &H3F
+        PSG_2 = &H30
+        YM2413_2 = &HA1
+        YM2612_Port_0_2 = &HA2
+        YM2612_Port_1_2 = &HA3
+        YM2151_2 = &HA4
+        YM2203_2 = &HA5
+        YM2608_Port_0_2 = &HA6
+        YM2608_Port_1_2 = &HA7
+        YM2610_Port_0_2 = &HA8
+        YM2610_Port_1_2 = &HA9
+        YM3812_2 = &HAA
+        YM3526_2 = &HAB
+        Y8950_2 = &HAC
+        YMZ280B_2 = &HAD
+        YMF262_Port_0_2 = &HAE
+        YMF262_Port_1_2 = &HAF
+
         Wait_n_Samples = &H61
         Wait_735_Samples = &H62
         Wait_882_Samples = &H63
@@ -944,8 +963,26 @@ Public Class VGM
 #Region "Commands"
     Public MustInherit Class Command
         Public ReadOnly Property Offset As Long
-
         Public ReadOnly Property CommandType As CommandType
+
+        'Protected _CommandType As CommandType
+        'Public Property CommandType As CommandType
+        '    Get
+        '        Select Case _CommandType
+        '            Case CommandType.GG_Stereo_2
+        '                Return CommandType.GG_Stereo
+        '            Case CommandType.PSG_2
+        '                Return CommandType.PSG
+        '            Case CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
+        '                Return (_CommandType And &HF) Or &H50
+        '            Case Else
+        '                Return _CommandType
+        '        End Select
+        '    End Get
+        '    Protected Set(value As CommandType)
+        '        _CommandType = value
+        '    End Set
+        'End Property
 
         Public ReadOnly Property Sample As Long
 
@@ -989,6 +1026,37 @@ Public Class VGM
         Inherits Command
 
         Public ReadOnly Property Value As Byte()
+
+        Public ReadOnly Property ChipName As String
+            Get
+                Dim cmdType As CommandType
+                Select Case CommandType
+                    Case CommandType.GG_Stereo_2
+                        cmdType = CommandType.GG_Stereo
+                    Case CommandType.PSG_2
+                        cmdType = CommandType.PSG
+                    Case CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
+                        cmdType = (CommandType And &HF) Or &H50
+                    Case Else
+                        cmdType = CommandType
+                End Select
+                Return cmdType.ToString.Replace("_", " ")
+            End Get
+        End Property
+
+        Public ReadOnly Property ChipIndex As Integer
+            Get
+                Select Case CommandType
+                    Case CommandType.GG_Stereo_2, CommandType.PSG_2, CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
+                        Return 1
+                    Case CommandType.AY8910 To CommandType.Pokey, CommandType.RF5C164_16bit To CommandType.C140
+                        Return If(Value(0) And &H80, 1, 0)
+                    Case CommandType.SegaPCM
+                        Return If(Value(1) And &H80, 1, 0)
+                End Select
+                Return 0
+            End Get
+        End Property
 
         Public Overrides ReadOnly Property Description As String
             Get

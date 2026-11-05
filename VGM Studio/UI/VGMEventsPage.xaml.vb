@@ -123,8 +123,8 @@ Class VGMEventsPage
     Private Sub ExportDataBlocksButton_Click(sender As Object, e As RoutedEventArgs) 'Handles ExportDataBlocksButton.Click
 
         Dim ofd As New OpenFolderDialog With {
-                   .Title = "Choose a folder to output the data blocks as .wav files.",
-                    .InitialDirectory = My.Settings.LastExportDirectory
+            .Title = "Choose a folder to output the data blocks as .wav files.",
+            .InitialDirectory = My.Settings.LastExportDirectory
         }
 
         With ofd
@@ -558,7 +558,21 @@ Public Class EventsPageViewModel
 
         Public ReadOnly Property Type As String
             Get
-                Return Command.CommandType.ToString.Replace("_", " ")
+                Dim cmd As Command =
+                    Command
+                Dim cmdType As CommandType =
+                    cmd.CommandType
+                Dim str As String
+
+                If TypeOf cmd Is ChipCommand Then
+                    Dim cc As ChipCommand = cmd
+                    With cc
+                        str = $"{ .ChipName} #{ .ChipIndex + 1}"
+                    End With
+                Else
+                    str = cmdType.ToString.Replace("_", " ")
+                End If
+                Return str
             End Get
         End Property
 

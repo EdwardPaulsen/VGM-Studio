@@ -1,5 +1,6 @@
 ﻿Imports VGM_Studio.VGM
 Imports VGM_Studio.Midi
+Imports System.Runtime.Serialization
 
 Public Class MidiExportOptions
     Inherits ExportOptions
@@ -763,7 +764,8 @@ Public Class MidiExporter
             MidiTrack.Channel(OPN_Base_Midi_Ch_Num + chIdx)
 
         If thisOPNStatus.OpOn(chIdx, 3) Then
-            midiCh.PlayNote(New Note(fNote(3)), 127 - ch.Op(3).TL, 0)
+            'midiCh.PlayNote(New Note(fNote(3)), 127 - ch.Op(3).TL, 0)
+            midiCh.PlayNote(New Note(fNote(3)), Options.Velocity, 0)
         Else
             midiCh.StopNote(0)
         End If
@@ -782,7 +784,7 @@ Public Class MidiExporter
                 Dim midiCh As Channel =
                     MidiTrack.Channel(OPN_Base_Midi_Ch_Num + .Index)
                 Dim fNote As Single =
-                        OPN.GetFNote(.Block, .FNum, .Op(3).DT, .Op(3).Multi, .Chip.IntSampleClockFreq)
+                    OPN.GetFNote(.Block, .FNum, .Op(3).DT, .Op(3).Multi, .Chip.IntSampleClockFreq)
                 midiCh.BendPitch(fNote, 0)
             End If
         End With
@@ -833,18 +835,22 @@ Public Class MidiExporter
                 op.Channel
             Dim tl As Integer =
                 ch.Op(3).TL
-            For i As Integer = 0 To 2
-                With ch.Op(i)
-                    If .IsCarrier Then
-                        tl += .TL
-                        tl \= 2
-                    End If
-                End With
-            Next
+            'For i As Integer = 0 To 2
+            '    With ch.Op(i)
+            '        If .IsCarrier Then
+            '            tl += .TL
+            '            tl \= 2
+            '        End If
+            '    End With
+            'Next
 
+            Dim dB As Single =
+                -(tl * OPN.dB_Per_TL_Step)
+            Dim midiVol As Byte =
+                GetMidiVolume(dB)
             Dim midiCh As Channel =
                 MidiTrack.Channel(OPN_Base_Midi_Ch_Num + op.Channel.Index)
-            midiCh.ChangeVolume(OPN_Midi_Ref_Vol - tl)
+            midiCh.ChangeVolume(midiVol)
         End If
 
     End Sub

@@ -19,18 +19,37 @@ Public MustInherit Class Exporter
     Public Property Options As ExportOptions
 
     Protected WithEvents SN76489Chip As SN76489.Chip
+    Protected WithEvents SN76489Chip2 As SN76489.Chip
+
     Protected WithEvents YM2413Chip As YM2413.Chip
+    Protected WithEvents YM2413Chip2 As YM2413.Chip
+
     Protected WithEvents YM2612Chip As YM2612.Chip
     Protected WithEvents YM2612Chip2 As YM2612.Chip
+
     Protected WithEvents YM2151Chip As YM2151.Chip
+    Protected WithEvents YM2151Chip2 As YM2151.Chip
+
     Protected WithEvents YM3526Chip As YM3526.Chip
+    Protected WithEvents YM3526Chip2 As YM3526.Chip
+
     Protected WithEvents YM3812Chip As YM3812.Chip
+    Protected WithEvents YM3812Chip2 As YM3812.Chip
+
     Protected WithEvents SegaPCMChip As SegaPCM.Chip
+    Protected WithEvents SegaPCMChip2 As SegaPCM.Chip
+
     Protected WithEvents YM2203Chip As YM2203.Chip
-    Protected WithEvents YM2203Chip2 As YM2203.Chip     'for dual chip support
+    Protected WithEvents YM2203Chip2 As YM2203.Chip
+
     Protected WithEvents YM2149Chip As YM2149.Chip
+    Protected WithEvents YM2149Chip2 As YM2149.Chip
+
     Protected WithEvents RFC5164Chip As RFC5164.Chip
+    Protected WithEvents RFC5164Chip2 As RFC5164.Chip
+
     Protected WithEvents C140Chip As C140.Chip
+    Protected WithEvents C140Chip2 As C140.Chip
 
     Sub New(ByRef vgmFile As VGMFile, options As ExportOptions) ', ByRef token As CancellationToken)
         MyBase.New()
@@ -54,43 +73,47 @@ Public MustInherit Class Exporter
 
     Protected Overridable Sub InitializeChips()
 
+        Dim extSampleClockFreq As Integer = VGM_Sample_Rate * SampleRateScale
 
         If VGMFile.SN76489Clock <> 0 Then
-            SN76489Chip = New SN76489.Chip(VGMFile.SN76489Clock, VGM_Sample_Rate * SampleRateScale, tap:=VGMFile.SN76489Feedback, width:=VGMFile.SN76489ShiftRegisterWidth, flags:=VGMFile.SN76489Flags)
+            SN76489Chip = New SN76489.Chip(VGMFile.SN76489Clock, extSampleClockFreq, tap:=VGMFile.SN76489Feedback, width:=VGMFile.SN76489ShiftRegisterWidth, flags:=VGMFile.SN76489Flags)
         End If
 
         If VGMFile.YM2413Clock <> 0 Then
-            YM2413Chip = New YM2413.Chip(VGMFile.YM2413Clock, VGM_Sample_Rate * SampleRateScale)
+            YM2413Chip = New YM2413.Chip(VGMFile.YM2413Clock, extSampleClockFreq)
         End If
 
         If VGMFile.YM3526Clock <> 0 Then
-            YM3526Chip = New YM3526.Chip(VGMFile.YM3526Clock, VGM_Sample_Rate * SampleRateScale)
+            YM3526Chip = New YM3526.Chip(VGMFile.YM3526Clock, extSampleClockFreq)
         End If
 
         If VGMFile.YM3812Clock <> 0 Then
-            YM3812Chip = New YM3812.Chip(VGMFile.YM3812Clock, VGM_Sample_Rate * SampleRateScale)
+            YM3812Chip = New YM3812.Chip(VGMFile.YM3812Clock, extSampleClockFreq)
         End If
 
         If VGMFile.YM2612Clock <> 0 Then
-            YM2612Chip = New YM2612.Chip(VGMFile.YM2612Clock, VGM_Sample_Rate * SampleRateScale, Options.HighQualityYM2612)
+            YM2612Chip = New YM2612.Chip(VGMFile.YM2612Clock, extSampleClockFreq, Options.HighQualityYM2612)
         End If
 
         If VGMFile.YM2151Clock <> 0 Then
-            YM2151Chip = New YM2151.Chip(VGMFile.YM2151Clock, VGM_Sample_Rate * SampleRateScale)
+            YM2151Chip = New YM2151.Chip(VGMFile.YM2151Clock, extSampleClockFreq)
         End If
 
         If VGMFile.SegaPCMClock <> 0 Then
-            SegaPCMChip = New SegaPCM.Chip(VGMFile.SegaPCMClock, VGM_Sample_Rate * SampleRateScale, VGMFile.SegaPCMInterface)
+            SegaPCMChip = New SegaPCM.Chip(VGMFile.SegaPCMClock, extSampleClockFreq, VGMFile.SegaPCMInterface)
         End If
 
         If VGMFile.YM2203Clock <> 0 Then
-            YM2203Chip = New YM2203.Chip(VGMFile.YM2203Clock, VGM_Sample_Rate * SampleRateScale)
-            YM2149Chip = New YM2149.Chip(VGMFile.YM2203Clock / 2, VGM_Sample_Rate * SampleRateScale)
+            YM2203Chip = New YM2203.Chip(VGMFile.YM2203Clock, extSampleClockFreq)
+            YM2149Chip = New YM2149.Chip(VGMFile.YM2203Clock / 2, extSampleClockFreq)
+            If VGMFile.IsDualYM2203 Then
+                YM2203Chip2 = New YM2203.Chip(VGMFile.YM2203Clock, extSampleClockFreq)
+                YM2149Chip2 = New YM2149.Chip(VGMFile.YM2203Clock / 2, extSampleClockFreq)
+            End If
         End If
 
         If VGMFile.RF5C164Clock <> 0 Then
-            'RFC5164Chip = New RFC5164.Chip(VGM_Sample_Rate * SampleRateScale * 384, VGM_Sample_Rate * SampleRateScale)
-            RFC5164Chip = New RFC5164.Chip(VGMFile.RF5C164Clock, VGM_Sample_Rate * SampleRateScale)
+            RFC5164Chip = New RFC5164.Chip(VGMFile.RF5C164Clock, extSampleClockFreq)
         End If
 
         If VGMFile.C140Clock <> 0 Then
@@ -145,7 +168,7 @@ Public MustInherit Class Exporter
                         Case CommandType.SegaPCM
                             ProcessSegaPCM(cmd)
 
-                        Case CommandType.YM2203
+                        Case CommandType.YM2203, CommandType.YM2203_2
                             ProcessYM2203(cmd)
 
                         Case CommandType.YM3812
@@ -315,9 +338,9 @@ Public MustInherit Class Exporter
 
     Protected Overridable Sub ProcessSegaPCM(cmd As ChipCommand)
         Dim addr As SegaPCM.RegAddr =
-(cmd.Value(1) << 8) + cmd.Value(0)
+            (cmd.Value(1) << 8) + cmd.Value(0)
         Dim value As Integer =
-cmd.Value(2)
+            cmd.Value(2)
 
         If IsChipAvailable(SegaPCMChip) Then
             SegaPCMChip.Write(addr, value)
@@ -328,12 +351,22 @@ cmd.Value(2)
         Dim addr As OPN.RegAddr = cmd.Value(0)
         Dim value As Byte = cmd.Value(1)
 
-        If IsChipAvailable(YM2203Chip) Then
-            If addr < &H20 Then
-                YM2149Chip.Write(addr, value)
-            End If
-            YM2203Chip.Write(addr, value)
-        End If
+        Select Case cmd.CommandType
+            Case CommandType.YM2203
+                If IsChipAvailable(YM2203Chip) Then
+                    If addr < &H20 Then
+                        YM2149Chip.Write(addr, value)
+                    End If
+                    YM2203Chip.Write(addr, value)
+                End If
+            Case CommandType.YM2203_2
+                If IsChipAvailable(YM2203Chip2) Then
+                    If addr < &H20 Then
+                        YM2149Chip2.Write(addr, value)
+                    End If
+                    YM2203Chip2.Write(addr, value)
+                End If
+        End Select
 
     End Sub
 

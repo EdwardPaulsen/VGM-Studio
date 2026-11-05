@@ -14,7 +14,7 @@ Public Class WAVExporter
     Public Overloads Property Options As WavExportOptions
 
     Const SegaPCM_Channel_Count As Integer =
-SegaPCM.Chip.Ch_Count
+        SegaPCM.Chip.Ch_Count
 
     Const Track_Count_Max = 32
 
@@ -40,9 +40,14 @@ SegaPCM.Chip.Ch_Count
     Protected NukedOPN2ChipState As Nuked.OPN2.ChipState
     Protected NukedOPMChipState As Nuked.OPM.ChipState
 
+    Protected NukedYMPSGChipState2 As Nuked.YMPSG.ChipState
+    Protected NukedOPN2ChipState2 As Nuked.OPN2.ChipState
+    Protected NukedOPMChipState2 As Nuked.OPM.ChipState
 
     Sub New(ByRef vgmfile As VGMFile, options As WavExportOptions)
         MyBase.New(vgmfile, options)
+
+        Dim extSampleClockFreq As Integer = VGM_Sample_Rate * SampleRateScale
 
         _Options = options
         sampleData = New List(Of Single)
@@ -50,7 +55,7 @@ SegaPCM.Chip.Ch_Count
         If options.PSGEmu = PSGEmu.NukedYMPSG Then
             If vgmfile.SN76489Clock <> 0 Then
                 NukedYMPSGChipState = New Nuked.YMPSG.ChipState
-                Nuked.YMPSG.Init(NukedYMPSGChipState, VGM_Sample_Rate * SampleRateScale, vgmfile.SN76489Clock)
+                Nuked.YMPSG.Init(NukedYMPSGChipState, extSampleClockFreq, vgmfile.SN76489Clock)
                 Nuked.YMPSG.SetFilter(NukedYMPSGChipState, 3390)
             End If
         End If
@@ -59,24 +64,28 @@ SegaPCM.Chip.Ch_Count
             If vgmfile.YM2612Clock <> 0 Then
                 NukedOPN2ChipState = New Nuked.OPN2.ChipState
                 Nuked.OPN2.SetChipType(Nuked.OPN2.ChipMode.ym2612)
-                Nuked.OPN2.Reset(NukedOPN2ChipState, VGM_Sample_Rate * SampleRateScale, vgmfile.YM2612Clock)
+                Nuked.OPN2.Reset(NukedOPN2ChipState, extSampleClockFreq, vgmfile.YM2612Clock)
                 Nuked.OPN2.SetFilter(NukedOPN2ChipState, 5894.6)
             End If
 
             If vgmfile.YM2203Clock <> 0 Then
                 NukedOPN2ChipState = New Nuked.OPN2.ChipState
                 Nuked.OPN2.SetChipType(Nuked.OPN2.ChipMode.ym3438)
-                Nuked.OPN2.Reset(NukedOPN2ChipState, VGM_Sample_Rate * SampleRateScale, vgmfile.YM2203Clock * 2)
+                Nuked.OPN2.Reset(NukedOPN2ChipState, extSampleClockFreq, vgmfile.YM2203Clock * 2)
                 Nuked.OPN2.SetFilter(NukedOPN2ChipState, 5894.6)
+                If vgmfile.IsDualYM2203 Then
+                    NukedOPN2ChipState2 = New Nuked.OPN2.ChipState
+                    Nuked.OPN2.Reset(NukedOPN2ChipState2, extSampleClockFreq, vgmfile.YM2203Clock * 2)
+                    Nuked.OPN2.SetFilter(NukedOPN2ChipState2, 5894.6)
+                End If
             End If
         End If
 
         If vgmfile.YM2151Clock <> 0 Then
             NukedOPMChipState = New Nuked.OPM.ChipState
-            Nuked.OPM.Reset(NukedOPMChipState, 0, VGM_Sample_Rate * SampleRateScale, vgmfile.YM2151Clock)
+            Nuked.OPM.Reset(NukedOPMChipState, 0, extSampleClockFreq, vgmfile.YM2151Clock)
             Nuked.OPM.SetFilter(NukedOPMChipState, 5894.6)
         End If
-
 
         RFC5164Chip?.Reset()
 
@@ -169,8 +178,18 @@ SegaPCM.Chip.Ch_Count
         End If
 
         If Options.OPNEmu = OPNEmu.NukedOPN2 Then
-            Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, 0, cmd.Value(0))
-            Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, 1, cmd.Value(1))
+            Dim chip As Nuked.OPN2.ChipState =
+                If(cmd.ChipIndex = 0, NukedOPN2ChipState, NukedOPN2ChipState2)
+            Nuked.OPN2.WriteBuffered(chip, 0, cmd.Value(0))
+            Nuked.OPN2.WriteBuffered(chip, 1, cmd.Value(1))
+
+            'If cmd.ChipIndex = 1 Then
+            '    Nuked.OPN2.WriteBuffered(NukedOPN2ChipState2, 0, cmd.Value(0))
+            '    Nuked.OPN2.WriteBuffered(NukedOPN2ChipState2, 1, cmd.Value(1))
+            'Else
+            '    Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, 0, cmd.Value(0))
+            '    Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, 1, cmd.Value(1))
+            'End If
         End If
     End Sub
 
@@ -230,13 +249,34 @@ SegaPCM.Chip.Ch_Count
             If YM2612Chip IsNot Nothing OrElse YM2203Chip IsNot Nothing Then
 
                 If Options.OPNEmu = OPNEmu.NukedOPN2 Then
-                    Dim ym3438samples(sampleCount - 1, 1) As Integer
-                    Nuked.OPN2.GenerateStream(NukedOPN2ChipState, ym3438samples, sampleCount)
-                    For curSample As Integer = 0 To ym3438samples.GetUpperBound(0)
-                        For i As Integer = 0 To 1
-                            samples(curSample, i) += ym3438samples(curSample, i) / If(YM2203Chip IsNot Nothing, 32767, 16383)
+                    'Dim ym3438samples(sampleCount - 1, 1) As Integer
+                    'Nuked.OPN2.GenerateStream(NukedOPN2ChipState, ym3438samples, sampleCount)
+                    'For curSample As Integer = 0 To ym3438samples.GetUpperBound(0)
+                    '    For spkIdx As Integer = 0 To 1
+                    '        samples(curSample, spkIdx) += ym3438samples(curSample, spkIdx) / If(YM2203Chip IsNot Nothing, 32767, 16383)
+                    '    Next
+                    'Next
+
+                    Dim dual As Boolean =
+                        VGMFile.IsDualYM2203
+                    Dim idx As Integer = 0
+                    Dim chip As Nuked.OPN2.ChipState
+                    Do
+                        Dim ym3438samples(sampleCount - 1, 1) As Integer
+                        chip = If(idx = 0, NukedOPN2ChipState, NukedOPN2ChipState2)
+                        Nuked.OPN2.GenerateStream(chip, ym3438samples, sampleCount)
+                        For curSample As Integer = 0 To ym3438samples.GetUpperBound(0)
+                            For i As Integer = 0 To 1
+                                samples(curSample, i) += ym3438samples(curSample, i) / If(YM2203Chip IsNot Nothing, 32767, 16383)
+                            Next
                         Next
-                    Next
+                        If dual Then
+                            idx += 1
+                            dual = False
+                        Else
+                            Exit Do
+                        End If
+                    Loop
                 Else
                     'Dim ym2612samples(sampleCount - 1, 1) As Single
                     'YM2612Chip?.DU.GenerateSamples(ym2612samples)

@@ -231,7 +231,7 @@
             release = 3
         };
 
-        public struct ChipState
+        public class ChipState
         {
             public uint cycles;
             public uint channel;

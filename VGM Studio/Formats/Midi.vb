@@ -3,6 +3,23 @@ Imports System.Math
 
 Public Class Midi
 
+#Region "Constants"
+    Public Const HeaderChunk As String = "MThd"
+    Public Const TrackChunk As String = "MTrk"
+    Public Const HeaderChunkSize As Integer = 6
+    Public Const TrackChunkSize As Integer = 0
+#End Region
+
+#Region "Shared Methods"
+
+    Shared Function GetMidiVolume(dB As Single) As Byte
+        'Dim db As Single =
+        '    Log2(Clamp(pct, 0.01, 100) / 100) * 6
+        Return Pow(10, dB / 40) * 127
+    End Function
+
+#End Region
+
 #Region "Enums"
 
     Public Enum TimeDivisionType As Integer
@@ -219,29 +236,25 @@ Public Class Midi
         VolumeMin = &H0
         VolumeMax = &H7F
 
+        '11/4/2026: Fixed bug in Volume values.  Volume0Percent was &H1, but should be &H0.  Volume100Percent was &H7E, but should be &H7F. Thanks, ValleyBell!
         Volume0Percent = 0
-        Volume10Percent = 11
-        Volume20Percent = 24
-        Volume30Percent = 38
-        Volume40Percent = 50
-        Volume50Percent = 63
-        Volume60Percent = 76
-        Volume70Percent = 88
-        Volume80Percent = 101
-        Volume90Percent = 114
+        Volume25Percent = 64
+        Volume50Percent = 90
+        Volume75Percent = 110
         Volume100Percent = 127
 
-        PanLeft = &H0
+        '11/4/2026: Fixed bug in Pan values.  PanLeft was &H0, but should be &H1.  PanCenter was &H3F, but should be &H40. Thanks, ValleyBell!
+        PanLeft = &H1 '&H0
         PanRight = &H7F
-        PanCenter = &H3F
+        PanCenter = &H40 '&H3F
 
-        PanLeft100Right0 = 0
-        PanLeft75Right25 = 31
-        PanLeft50Right50 = 63
-        PanLeft25Right75 = 95
+        PanLeft100Right0 = 1
+        PanLeft75Right25 = 32
+        PanLeft50Right50 = 64
+        PanLeft25Right75 = 96
         PanLeft0Right100 = 127
 
-        PitchBendRanageDefault = 2
+        PitchBendRangeDefault = 2
     End Enum
 
     Public Enum ProgramValue As Byte

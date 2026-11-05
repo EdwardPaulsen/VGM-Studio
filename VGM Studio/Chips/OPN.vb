@@ -16,6 +16,9 @@ Public Class OPN
     ' Clock cycles per slot
     Public Const Cycles_Per_Slot As Integer = 1
 
+    ' Decibels per TL step
+    Public Const dB_Per_TL_Step As Single = 0.75
+
 #End Region
 
 #Region "Shared Methods"
