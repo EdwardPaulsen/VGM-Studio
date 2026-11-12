@@ -1,11 +1,11 @@
 ﻿Imports System.Text
 
-Namespace DX7
+Public Class DX7
 
     ''' <summary>
     ''' Operator data for OPSVoice
     ''' </summary>
-    Public Structure Op
+    Public Class Op
         Public ReadOnly Property Index As Long
 
         Public R1 As Byte   'Attack
@@ -91,15 +91,24 @@ Namespace DX7
             Return ba
         End Function
 
-    End Structure
+    End Class
 
 
     ''' <summary>
     ''' Voice for Yamaha OPS synthesizers such as the DX7
     ''' </summary>
-    Public Structure Voice
+    Public Class Voice
         Public ReadOnly Property Index As Long
+
+        Protected _VoiceName As String
         Public Property VoiceName As String
+            Get
+                Return _VoiceName
+            End Get
+            Protected Set(value As String)
+                _VoiceName = value.ToString.PadRight(10).Substring(0, 10)
+            End Set
+        End Property
 
         Dim Op As Op()
 
@@ -137,9 +146,26 @@ Namespace DX7
         Public LFKS As Byte         'LFO Key Sync
         Public TRNS As Byte         'Transpose
 
+        'Tables for converting YM operator values to DX7 operator values
+        'Phase distortion
+        Shared ReadOnly PDTable As Byte() =
+            {7, 8, 9, 10, 7, 6, 5, 4}
+
+        'Algorithm select
+        Shared ReadOnly ALSTable As Byte() =
+            {0, 13, 7, 6, 4, 21, 30, 31}
+
+        'Amplitude modulateion depth
+        Shared ReadOnly AMDTable As Byte() =
+            {0, 35, 75, 99}
+
+        'LFO speed
+        Shared ReadOnly LFSTable As Byte() =
+            {26, 29, 30, 31, 32, 35, 64, 75}
+
         Sub New(index As Long, Optional voiceName As String = "Voice")
             Me.Index = index
-            Me.VoiceName = voiceName.ToString.PadRight(10).Substring(0, 10)
+            Me.VoiceName = $"{voiceName} {index:00}"
 
             ReDim Op(5)
             For opIdx As Integer = 0 To 5
@@ -178,135 +204,22 @@ Namespace DX7
             TRNS = 24
         End Sub
 
-        Sub New(index As Long, voice As OPN.Voice)
-            Me.New(index, $"OPN {index:X6}")
+        Sub New(index As Long, voice As FM.Voice)
+            Me.New(index)
 
-            'DX7 operators are in the reverse order of YM operators
-            For dx7opIdx As Integer = 5 To 0 Step -1
-                With Op(dx7opIdx)
-                    'Set ops 1 and 2 to silence
-                    If dx7opIdx < 2 Then
-                        .TL = 0
-                        Continue For
-                    End If
-
-                    Dim ymopIdx As Integer =
-                        5 - dx7opIdx
-
-                    'Remap operators for ym algo 2
-                    If voice.Con = 2 Then
-                        Select Case dx7opIdx
-                            Case 5
-                                ymopIdx = 1
-                            Case 4
-                                ymopIdx = 2
-                            Case 3
-                                ymopIdx = 0
-                            Case 2
-                                ymopIdx = 3
-                        End Select
-                    End If
-
-                    'Rates
-                    Dim ar, dr, sr, rr, sl As Integer
-                    With voice
-                        ar = .AR(ymopIdx)
-                        dr = .DR(ymopIdx)
-                        SR = .SR(ymopIdx)
-                        rr = .RR(ymopIdx)
-                        sl = voice.SL(ymopIdx)
-                    End With
-
-                    If ar = 31 Then
-                        .R1 = 99
-                    Else
-                        .R1 = Math.Clamp(Math.Round(3.1 * ar + 2), 0, 99) 'OPNR1Table(voice.AR(ymopIdx))
-                    End If
-
-                    'Adjust rate based on sustain level
-                    Dim slAdj As Single =
-                        (15 - sl) / 2
-
-                    .R2 = Math.Clamp(Math.Round(3 * dr + slAdj), 0, 99) 'OPNR2Table(voice.DR(ymopIdx), voice.SL(ymopIdx))
-                    .R3 = Math.Clamp(Math.Round(3 * sr + slAdj), 0, 99) 'OPNR3Table(voice.SR(ymopIdx), voice.SL(ymopIdx))
-                    .R4 = Math.Clamp(Math.Round(6.2 * rr + 6 - (sl / 2)), 0, 99) 'OPNR4Table(voice.RR(ymopIdx), voice.SL(ymopIdx))
-
-                    '.R1 = Math.Round(voice.AR(ymopIdx) * (99 / 31))
-                    '.R2 = Math.Round(voice.DR(ymopIdx) * (99 / 31))
-                    '.R3 = Math.Round(voice.SR(ymopIdx) * (99 / 31))
-                    '.R4 = Math.Round(((voice.RR(ymopIdx) * 2) + 1) * (99 / 31))
-
-                    .L2 = Math.Clamp(Math.Round(99 - (sl * 6.6)), 0, 99)
-                    .L3 = 0
-
-                    .PD = OPNPDTable(voice.DT(ymopIdx))
-                    .RS = Math.Clamp(voice.KS(ymopIdx) * 2, 0, 7)
-
-                    .AMS = voice.AMS
-
-                    Dim tl As Integer =
-                        voice.TL(ymopIdx)
-                    If tl >= 96 Then
-                        .TL = 0
-                    Else
-                        .TL = Math.Round(99 - 0.7795 * tl)
-                        '.TL =  (127 - tl) * (99 / 127)
-                        '.TL = Math.Round(99 * Math.Pow(1 - (tl / 127), 0.65))
-                    End If
-
-                    If voice.IsCh3Sp Then
-                        Dim hz As Integer =
-                            voice.Ch3SpHz(ymopIdx)
-                        Dim coarse As Integer = 0
-                        If (hz >= 1) And (hz < 10) Then
-                            coarse = 0
-                        ElseIf (hz >= 10) And (hz < 100) Then
-                            coarse = 1
-                        ElseIf (hz >= 100) And (hz < 1000) Then
-                            coarse = 2
-                        ElseIf hz >= 1000 Then
-                            coarse = 3
-                        End If
-                        Dim fine As Integer =
-                            Math.Round(((hz / Math.Pow(10, coarse)) - 1) / 8.772 * 100)
-                        .PC = coarse
-                        .PM = 1
-                        .PF = fine
-                    Else
-                        .PC = voice.Multi(ymopIdx)
-                    End If
-
-                End With
-            Next
-
-            ALS = OPNALSTable(voice.Con)
-
-            OPI = 1
-            FBL = voice.FB And 7
-
-            LFS = OPNLFSTable(voice.LFOFreq)
-            LAMD = OPNAMDTable(voice.AMS)
-            LPMS = voice.PMS
+            If TypeOf (voice) Is OPM.Voice Then
+                Dim opmVoice As OPM.Voice =
+                    voice
+                NewOPMVoice(index, opmVoice)
+            ElseIf TypeOf voice Is OPN.Voice Then
+                Dim opnVoice As OPN.Voice =
+                    voice
+                NewOPNVoice(index, opnVoice)
+            End If
         End Sub
 
-        'Phase distortion
-        Shared ReadOnly OPNPDTable As Byte() =
-            {7, 8, 9, 10, 7, 6, 5, 4}
-
-        'Algorithm select
-        Shared ReadOnly OPNALSTable As Byte() =
-            {0, 13, 7, 6, 4, 21, 30, 31}
-
-        'Amplitude modulateion depth
-        Shared ReadOnly OPNAMDTable As Byte() =
-            {0, 35, 75, 99}
-
-        'LFO speed
-        Shared ReadOnly OPNLFSTable As Byte() =
-            {26, 29, 30, 31, 32, 35, 64, 75}
-
-        Sub New(index As Long, voice As OPM.Voice)
-            Me.New(index, $"OPM {index:X6}")
+        Sub NewOPMVoice(index As Long, voice As OPM.Voice)
+            VoiceName = $"OPM {index:00}"
 
             'DX7 operators are in the reverse order of YM operators
             For dx7opIdx As Integer = 5 To 0 Step -1
@@ -362,7 +275,7 @@ Namespace DX7
                     .L2 = Math.Clamp(Math.Round(99 - (sl * 6.6)), 0, 99)
                     .L3 = 0
 
-                    .PD = OPNPDTable(voice.DT1(ymopIdx))
+                    .PD = PDTable(voice.DT1(ymopIdx))
                     .RS = Math.Clamp(voice.KS(ymopIdx) * 2, 0, 7)
 
                     .AMS = voice.AMS
@@ -377,15 +290,28 @@ Namespace DX7
                         '.TL = Math.Round(99 * Math.Pow(1 - (tl / 127), 0.65))
                     End If
 
-                    .PC = voice.Mul(ymopIdx)
+                    'Add DT2 to Coarse Pitch
+                    Dim mul As Single =
+                        voice.Mul(ymopIdx)
+                    mul = If(mul = 0, 0.5, mul)
+
+                    Dim tune As Single =
+                        mul * OPM.GetDT2Multiplier(voice.DT2(ymopIdx))
+                    Dim coarse As Integer =
+                        Math.Floor(tune)
+                    Dim fine As Integer =
+                        (tune - coarse) * 99
+
+                    .PC = coarse
+                    .PF = fine
 
                 End With
             Next
 
-            ALS = OPNALSTable(voice.Con)
+            ALS = ALSTable(voice.Con)
 
             OPI = 1
-            FBL = voice.FL And 7
+            FBL = (voice.FL And 7) - 1
 
             LFS = Math.Clamp(Math.Round(99 * Math.Pow(voice.LFOFreq / 255, 0.72)), 0, 99)
             LPMD = Math.Round(99 * Math.Pow(voice.PMD / 125, 0.85))
@@ -403,6 +329,116 @@ Namespace DX7
             End Select
         End Sub
 
+        Sub NewOPNVoice(index As Long, voice As OPN.Voice)
+            VoiceName = $"OPN {index:00}"
+
+            'DX7 operators are in the reverse order of YM operators
+            For dx7opIdx As Integer = 5 To 0 Step -1
+                With Op(dx7opIdx)
+                    'Set ops 1 and 2 to silence
+                    If dx7opIdx < 2 Then
+                        .TL = 0
+                        Continue For
+                    End If
+
+                    Dim ymopIdx As Integer =
+                        5 - dx7opIdx
+
+                    'Remap operators for ym algo 2
+                    If voice.Con = 2 Then
+                        Select Case dx7opIdx
+                            Case 5
+                                ymopIdx = 1
+                            Case 4
+                                ymopIdx = 2
+                            Case 3
+                                ymopIdx = 0
+                            Case 2
+                                ymopIdx = 3
+                        End Select
+                    End If
+
+                    'Rates
+                    Dim ar, dr, sr, rr, sl As Integer
+                    With voice
+                        ar = .AR(ymopIdx)
+                        dr = .DR(ymopIdx)
+                        sr = .SR(ymopIdx)
+                        rr = .RR(ymopIdx)
+                        sl = voice.SL(ymopIdx)
+                    End With
+
+                    If ar = 31 Then
+                        .R1 = 99
+                    Else
+                        .R1 = Math.Clamp(Math.Round(3.1 * ar + 2), 0, 99) 'OPNR1Table(voice.AR(ymopIdx))
+                    End If
+
+                    'Adjust rate based on sustain level
+                    Dim slAdj As Single =
+                        (15 - sl) / 2
+
+                    .R2 = Math.Clamp(Math.Round(3 * dr + slAdj), 0, 99) 'OPNR2Table(voice.DR(ymopIdx), voice.SL(ymopIdx))
+                    .R3 = Math.Clamp(Math.Round(3 * sr + slAdj), 0, 99) 'OPNR3Table(voice.SR(ymopIdx), voice.SL(ymopIdx))
+                    .R4 = Math.Clamp(Math.Round(6.2 * rr + 6 - (sl / 2)), 0, 99) 'OPNR4Table(voice.RR(ymopIdx), voice.SL(ymopIdx))
+
+                    '.R1 = Math.Round(voice.AR(ymopIdx) * (99 / 31))
+                    '.R2 = Math.Round(voice.DR(ymopIdx) * (99 / 31))
+                    '.R3 = Math.Round(voice.SR(ymopIdx) * (99 / 31))
+                    '.R4 = Math.Round(((voice.RR(ymopIdx) * 2) + 1) * (99 / 31))
+
+                    .L2 = Math.Clamp(Math.Round(99 - (sl * 6.6)), 0, 99)
+                    .L3 = 0
+
+                    .PD = PDTable(voice.DT(ymopIdx))
+                    .RS = Math.Clamp(voice.KS(ymopIdx) * 2, 0, 7)
+
+                    .AMS = voice.AMS
+
+                    Dim tl As Integer =
+                        voice.TL(ymopIdx)
+                    If tl >= 96 Then
+                        .TL = 0
+                    Else
+                        .TL = Math.Round(99 - 0.7795 * tl)
+                        '.TL =  (127 - tl) * (99 / 127)
+                        '.TL = Math.Round(99 * Math.Pow(1 - (tl / 127), 0.65))
+                    End If
+
+                    If voice.IsCh3Sp Then
+                        Dim hz As Integer =
+                            voice.Ch3SpHz(ymopIdx)
+                        Dim coarse As Integer = 0
+                        If (hz >= 1) And (hz < 10) Then
+                            coarse = 0
+                        ElseIf (hz >= 10) And (hz < 100) Then
+                            coarse = 1
+                        ElseIf (hz >= 100) And (hz < 1000) Then
+                            coarse = 2
+                        ElseIf hz >= 1000 Then
+                            coarse = 3
+                        End If
+                        Dim fine As Integer =
+                            Math.Round(((hz / Math.Pow(10, coarse)) - 1) / 8.772 * 100)
+                        .PC = coarse
+                        .PM = 1
+                        .PF = fine
+                    Else
+                        .PC = voice.Multi(ymopIdx)
+                    End If
+
+                End With
+            Next
+
+            ALS = ALSTable(voice.Con)
+
+            OPI = 1
+            FBL = voice.FB And 7
+
+            LFS = LFSTable(voice.LFOFreq)
+            LAMD = AMDTable(voice.AMS)
+            LPMS = voice.PMS
+        End Sub
 
         Public Function ToVmemBytes() As Byte()
             Dim vmem(127) As Byte
@@ -447,7 +483,7 @@ Namespace DX7
 
         End Function
 
-    End Structure
+    End Class
 
     Public Structure SYXFile
         Public ReadOnly Data As Byte()
@@ -495,6 +531,6 @@ Namespace DX7
 
     End Class
 
-End Namespace
+End Class
 
 

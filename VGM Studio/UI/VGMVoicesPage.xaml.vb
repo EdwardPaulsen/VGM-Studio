@@ -29,12 +29,12 @@ Class VGMVoicesPage
         Dispatcher.Invoke(Sub()
                               MainProgressBar.Visibility = Visibility.Collapsed
 
-                              If ViewModel.OPNVoices?.Count > 0 Then
-                                  With OPNVoiceComboBox
-                                      .ItemsSource = ViewModel.OPNVoices
+                              If ViewModel.FMVoices?.Count > 0 Then
+                                  With FMVoiceComboBox
+                                      .ItemsSource = ViewModel.FMVoices
                                       .SelectedIndex = 0
                                   End With
-                                  OPNStackPanel.Visibility = Visibility.Visible
+                                  FMStackPanel.Visibility = Visibility.Visible
                               End If
 
                               If ViewModel.YM2612PCMVoices?.Count > 0 Then
@@ -45,22 +45,6 @@ Class VGMVoicesPage
                                   YM2612PCMStackPanel.Visibility = Visibility.Visible
                               End If
 
-                              If ViewModel.OPMVoices?.Count > 0 Then
-                                  With OPMVoiceComboBox
-                                      .ItemsSource = ViewModel.OPMVoices
-                                      .SelectedIndex = 0
-                                  End With
-                                  OPMStackPanel.Visibility = Visibility.Visible
-                              End If
-
-                              If ViewModel.RFC5164Voices?.Count > 0 Then
-                                  With RFC5164VoiceComboBox
-                                      .ItemsSource = ViewModel.RFC5164Voices
-                                      .SelectedIndex = 0
-                                  End With
-                                  RFC5164StackPanel.Visibility = Visibility.Visible
-                              End If
-
                               If ViewModel.SegaPCMVoices?.Count > 0 Then
                                   With SegaPCMVoiceComboBox
                                       .ItemsSource = ViewModel.SegaPCMVoices
@@ -69,11 +53,70 @@ Class VGMVoicesPage
                                   SegaPCMStackPanel.Visibility = Visibility.Visible
                               End If
 
+                              If ViewModel.RF5CVoices?.Count > 0 Then
+                                  With RF5CVoiceComboBox
+                                      .ItemsSource = ViewModel.RF5CVoices
+                                      .SelectedIndex = 0
+                                  End With
+                                  RF5CStackPanel.Visibility = Visibility.Visible
+                              End If
+
                           End Sub)
     End Sub
 
-    Private Sub OPNVoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles OPNVoiceComboBox.SelectionChanged
-        ViewModel.OPNVoiceInfo = ViewModel.OPNVoice.ToString(ControlChars.Tab)
+    Private Sub FMVoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles FMVoiceComboBox.SelectionChanged
+        ViewModel.FMVoiceInfo = ViewModel.FMVoice.InfoString(ControlChars.Tab)
+    End Sub
+
+    Private Sub ExportFMButton_Click(sender As Object, e As RoutedEventArgs) Handles ExportFMButton.Click
+        Dim btn As Button = sender
+        If btn IsNot Nothing AndAlso btn.ContextMenu IsNot Nothing Then
+            With btn.ContextMenu
+                .PlacementTarget = btn
+                .Placement = Primitives.PlacementMode.Bottom
+                .IsOpen = True
+            End With
+        End If
+    End Sub
+
+    Private Sub ExportThisFMVoiceMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportThisFMVoiceMenuItem.Click
+
+    End Sub
+
+    Private Sub ExportAllFMVoicesMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportAllFMVoicesMenuItem.Click
+        'Save file
+        Dim sfd As New SaveFileDialog
+
+        With sfd
+            .AddExtension = True
+            .CheckPathExists = True
+            .DefaultExt = ".syx"
+            .InitialDirectory = Settings.LastVoiceExportDirectory
+            .Filter = "Yamaha DX7 SYX files (*.syx)|*.syx"
+            .FileName = RemoveIllegalFileNameChars($"{ViewModel.VGMFile.GD3Tag.GameNameInEnglish} - {ViewModel.VGMFile.GD3Tag.TrackNameInEnglish}", "-")
+
+            Select Case .ShowDialog
+                Case True
+                    Dim dx7Voices As New List(Of Voice)
+                    For Each key As Long In ViewModel.FMVoices.Keys
+                        dx7Voices.Add(New Voice(key, ViewModel.FMVoices(key)))
+                    Next
+
+                    'Create SYX data
+                    Dim syxFile As New SYXFile(dx7Voices.ToArray)
+
+                    Using s As New FileStream(.FileName, FileMode.OpenOrCreate)
+                        Using bw As New BinaryWriter(s)
+                            bw.Write(syxFile.Data)
+                        End Using
+                    End Using
+
+                    Settings.LastVoiceExportDirectory = Path.GetDirectoryName(.FileName)
+                    Settings.Save()
+            End Select
+
+        End With
+
     End Sub
 
     Private Sub YM2612PCMVoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles YM2612PCMVoiceComboBox.SelectionChanged
@@ -83,116 +126,10 @@ Class VGMVoicesPage
         End With
     End Sub
 
-    Private Sub ExportOPNButton_Click(sender As Object, e As RoutedEventArgs) Handles ExportOPNButton.Click
-        Dim btn As Button = sender
-        If btn IsNot Nothing AndAlso btn.ContextMenu IsNot Nothing Then
-            With btn.ContextMenu
-                .PlacementTarget = btn
-                .Placement = Primitives.PlacementMode.Bottom
-                .IsOpen = True
-            End With
-        End If
-    End Sub
-
-    Private Sub ExportThisOPNVoiceMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportThisOPNVoiceMenuItem.Click
-
-    End Sub
-
-    Private Sub ExportAllOPNVoicesMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportAllOPNVoicesMenuItem.Click
-        'Save file
-        Dim sfd As New SaveFileDialog
-
-        With sfd
-            .AddExtension = True
-            .CheckPathExists = True
-            .DefaultExt = ".syx"
-            .InitialDirectory = Settings.LastVoiceExportDirectory
-            .Filter = "Yamaha DX7 SYX files (*.syx)|*.syx"
-            .FileName = RemoveIllegalFileNameChars($"{ViewModel.VGMFile.GD3Tag.GameNameInEnglish} - {ViewModel.VGMFile.GD3Tag.TrackNameInEnglish}", "-")
-
-            Select Case .ShowDialog
-                Case True
-                    Dim dx7Voices As New List(Of Voice)
-                    For Each key As Long In ViewModel.OPNVoices.Keys
-                        dx7Voices.Add(New Voice(key, ViewModel.OPNVoices(key)))
-                    Next
-
-                    'Create SYX data
-                    Dim syxFile As New SYXFile(dx7Voices.ToArray)
-
-                    Using s As New FileStream(.FileName, FileMode.OpenOrCreate)
-                        Using bw As New BinaryWriter(s)
-                            bw.Write(syxFile.Data)
-                        End Using
-                    End Using
-
-                    Settings.LastVoiceExportDirectory = Path.GetDirectoryName(.FileName)
-                    Settings.Save()
-            End Select
-
-        End With
-
-    End Sub
-
-    Private Sub OPMVoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles OPMVoiceComboBox.SelectionChanged
-        ViewModel.OPMVoiceInfo = ViewModel.OPMVoice.ToString(ControlChars.Tab)
-    End Sub
-
-    Private Sub ExportOPMButton_Click(sender As Object, e As RoutedEventArgs) Handles ExportOPMButton.Click
-        Dim btn As Button = sender
-        If btn IsNot Nothing AndAlso btn.ContextMenu IsNot Nothing Then
-            With btn.ContextMenu
-                .PlacementTarget = btn
-                .Placement = Primitives.PlacementMode.Bottom
-                .IsOpen = True
-            End With
-        End If
-    End Sub
-
-    Private Sub ExportThisOPMVoiceMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportThisOPMVoiceMenuItem.Click
-
-    End Sub
-
-    Private Sub ExportAllOPMVoicesMenuItem_Click(sender As Object, e As RoutedEventArgs) Handles ExportAllOPMVoicesMenuItem.Click
-        'Save file
-        Dim sfd As New SaveFileDialog
-
-        With sfd
-            .AddExtension = True
-            .CheckPathExists = True
-            .DefaultExt = ".syx"
-            .InitialDirectory = Settings.LastVoiceExportDirectory
-            .Filter = "Yamaha DX7 SYX files (*.syx)|*.syx"
-            .FileName = RemoveIllegalFileNameChars($"{ViewModel.VGMFile.GD3Tag.GameNameInEnglish} - {ViewModel.VGMFile.GD3Tag.TrackNameInEnglish}", "-")
-
-            Select Case .ShowDialog
-                Case True
-                    Dim dx7Voices As New List(Of Voice)
-                    For Each key As Long In ViewModel.OPMVoices.Keys
-                        dx7Voices.Add(New Voice(key, ViewModel.OPMVoices(key)))
-                    Next
-
-                    'Create SYX data
-                    Dim syxFile As New SYXFile(dx7Voices.ToArray)
-
-                    Using s As New FileStream(.FileName, FileMode.OpenOrCreate)
-                        Using bw As New BinaryWriter(s)
-                            bw.Write(syxFile.Data)
-                        End Using
-                    End Using
-
-                    Settings.LastVoiceExportDirectory = Path.GetDirectoryName(.FileName)
-                    Settings.Save()
-            End Select
-
-        End With
-
-    End Sub
-
-    Private Sub RFC5164VoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles RFC5164VoiceComboBox.SelectionChanged
-        If ViewModel.RFC5164Voices?.Count > 0 Then
-            With RFC5164VoiceSpeedComboBox
-                .ItemsSource = ViewModel.RFC5164Voice.Speeds
+    Private Sub RF5C164VoiceComboBox_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles RF5CVoiceComboBox.SelectionChanged
+        If ViewModel.RF5CVoices?.Count > 0 Then
+            With RF5CVoiceSpeedComboBox
+                .ItemsSource = ViewModel.RF5CVoice.Speeds
                 .SelectedIndex = 0
             End With
         End If
@@ -230,19 +167,27 @@ Class VGMVoicesPage
         End Using
     End Sub
 
-    Private Sub RFC5164PlayButton_Click(sender As Object, e As RoutedEventArgs) Handles RFC5164PlayButton.Click
+    Private Sub RFCPlayButton_Click(sender As Object, e As RoutedEventArgs) Handles RF5CPlayButton.Click
         'Get and convert PCM data
-        Dim voice As RFC5164.Voice =
-            ViewModel.RFC5164Voice
+        Dim voice As RF5C.Voice =
+            ViewModel.RF5CVoice
 
         Dim pcmData(voice.Data.GetUpperBound(0)) As Single
 
         For i As Integer = 0 To voice.Data.GetUpperBound(0)
-            pcmData(i) = RFC5164.GetOutput(New RFC5164.PCMSample(voice.Data(i)), 255, 15)
+            pcmData(i) = RF5C.GetOutput(New RF5C.PCMSample(voice.Data(i)), 255, 15, voice.ChipType)
         Next
 
         'Play sound
-        Dim sampleRate As Integer = (ViewModel.VGMFile.RF5C164Clock / 384) * (ViewModel.RFC5164VoiceSpeed / 100)
+        Dim clock As Integer
+        With ViewModel.VGMFile
+            If .RF5C68Clock <> 0 Then
+                clock = .RF5C68Clock
+            ElseIf .RF5C164Clock <> 0 Then
+                clock = .RF5C164Clock
+            End If
+        End With
+        Dim sampleRate As Integer = (clock / 384) * (ViewModel.RF5CVoiceSpeed / 100)
         Dim numChannels As Integer = 1
         Dim wf As New WAV.WAVFile(sampleRate, pcmData, numChannels)
         Using stream As New MemoryStream
@@ -301,24 +246,10 @@ Public Class VoicesPageViewModel
     Public Sub New(fileName As String)
         _VGMFile = New VGMFile(fileName)
 
-        If VGMFile.YM2612Clock <> 0 OrElse VGMFile.YM2203Clock <> 0 Then
-            OPNVoices = New Dictionary(Of Long, OPN.Voice)
-            If VGMFile.YM2612Clock <> 0 Then
-                YM2612PCMVoices = New Dictionary(Of Long, YM2612.PCMVoice)
-            End If
-        End If
-
-        If VGMFile.YM2151Clock <> 0 Then
-            OPMVoices = New Dictionary(Of Long, OPM.Voice)
-        End If
-
-        If VGMFile.RF5C164Clock <> 0 Then
-            RFC5164Voices = New Dictionary(Of Long, RFC5164.Voice)
-        End If
-
-        If VGMFile.SegaPCMClock <> 0 Then
-            SegaPCMVoices = New Dictionary(Of Long, SegaPCM.Voice)
-        End If
+        FMVoices = New Dictionary(Of Long, FM.Voice)
+        YM2612PCMVoices = New Dictionary(Of Long, YM2612.PCMVoice)
+        RF5CVoices = New Dictionary(Of Long, RF5C.Voice)
+        SegaPCMVoices = New Dictionary(Of Long, SegaPCM.Voice)
 
     End Sub
     Public ReadOnly Property VGMFile As VGMFile
@@ -328,36 +259,36 @@ Public Class VoicesPageViewModel
         End Get
     End Property
 
-    'Yamaha OPN Voices (YM2203, YM2612, etc.)
-    Private _OPNVoices As Dictionary(Of Long, OPN.Voice)
-    Public Property OPNVoices As Dictionary(Of Long, OPN.Voice)
+    'FM Voices
+    Private _FMVoices As Dictionary(Of Long, FM.Voice)
+    Public Property FMVoices As Dictionary(Of Long, FM.Voice)
         Get
-            Return _OPNVoices
+            Return _FMVoices
         End Get
-        Set(value As Dictionary(Of Long, OPN.Voice))
-            _OPNVoices = value
+        Set(value As Dictionary(Of Long, FM.Voice))
+            _FMVoices = value
             NotifyPropertyChanged()
         End Set
     End Property
 
-    Private _OPNVoice As OPN.Voice
-    Public Property OPNVoice As OPN.Voice
+    Private _FMVoice As FM.Voice
+    Public Property FMVoice As FM.Voice
         Get
-            Return _OPNVoice
+            Return _FMVoice
         End Get
-        Set(value As OPN.Voice)
-            _OPNVoice = value
+        Set(value As FM.Voice)
+            _FMVoice = value
             NotifyPropertyChanged()
         End Set
     End Property
 
-    Private _OPNVoiceInfo As String
-    Public Property OPNVoiceInfo As String
+    Private _FMVoiceInfo As String
+    Public Property FMVoiceInfo As String
         Get
-            Return _OPNVoiceInfo
+            Return _FMVoiceInfo
         End Get
         Set(value As String)
-            _OPNVoiceInfo = value
+            _FMVoiceInfo = value
             NotifyPropertyChanged()
         End Set
     End Property
@@ -398,82 +329,48 @@ Public Class VoicesPageViewModel
         End Set
     End Property
 
-    'OPM and OPP Voices (YM2151 and YM2164)
-    Private _OPMVoices As Dictionary(Of Long, OPM.Voice)
-    Public Property OPMVoices As Dictionary(Of Long, OPM.Voice)
-        Get
-            Return _OPMVoices
-        End Get
-        Set(value As Dictionary(Of Long, OPM.Voice))
-            _OPMVoices = value
-            NotifyPropertyChanged()
-        End Set
-    End Property
-
-    Private _OPMVoice As OPM.Voice
-    Public Property OPMVoice As OPM.Voice
-        Get
-            Return _OPMVoice
-        End Get
-        Set(value As OPM.Voice)
-            _OPMVoice = value
-            NotifyPropertyChanged()
-        End Set
-    End Property
-
-    Private _OPMVoiceInfo As String
-    Public Property OPMVoiceInfo As String
-        Get
-            Return _OPMVoiceInfo
-        End Get
-        Set(value As String)
-            _OPMVoiceInfo = value
-            NotifyPropertyChanged()
-        End Set
-    End Property
-
     'RF5164 Voices
-    Private _RFC5164Voices As Dictionary(Of Long, RFC5164.Voice)
-    Public ReadOnly Property RFC5164VoiceChannels As New List(Of SortedSet(Of Integer))
-    Public Property RFC5164Voices As Dictionary(Of Long, RFC5164.Voice)
+    Private _RF5CVoices As Dictionary(Of Long, RF5C.Voice)
+    Public ReadOnly Property RF5CVoiceChannels As New List(Of SortedSet(Of Integer))
+    Public Property RF5CVoices As Dictionary(Of Long, RF5C.Voice)
         Get
-            Return _RFC5164Voices
+            Return _RF5CVoices
         End Get
-        Set(value As Dictionary(Of Long, RFC5164.Voice))
-            _RFC5164Voices = value
+        Set(value As Dictionary(Of Long, RF5C.Voice))
+            _RF5CVoices = value
             NotifyPropertyChanged()
         End Set
     End Property
 
-    Private _RFC5164Voice As RFC5164.Voice
-    Public Property RFC5164Voice As RFC5164.Voice
+    Private _RF5CVoice As RF5C.Voice
+    Public Property RF5CVoice As RF5C.Voice
         Get
-            Return _RFC5164Voice
+            Return _RF5CVoice
         End Get
-        Set(value As RFC5164.Voice)
-            _RFC5164Voice = value
+        Set(value As RF5C.Voice)
+            _RF5CVoice = value
             NotifyPropertyChanged()
         End Set
     End Property
 
-    Private _RFC5164VoiceAddrInc As UInteger
-    Public Property RFC5164VoiceAddrInc As UInteger
+    Private _RF5CVoiceAddrInc As UInteger
+    Public Property RF5CVoiceAddrInc As UInteger
         Get
-            Return _RFC5164VoiceAddrInc
+            Return _RF5CVoiceAddrInc
         End Get
         Set(value As UInteger)
-            _RFC5164VoiceAddrInc = value
+            _RF5CVoiceAddrInc = value
             NotifyPropertyChanged()
         End Set
     End Property
 
-    Private _RFC5164VoiceSpeed As Single
-    Public Property RFC5164VoiceSpeed As Single
+    Private _RF5CVoiceSpeed As Single
+    Public Property RF5CVoiceSpeed As Single
         Get
-            Return _RFC5164VoiceSpeed
+            Return _RF5CVoiceSpeed
         End Get
         Set(value As Single)
-            _RFC5164VoiceSpeed = value
+            _RF5CVoiceSpeed = value
             NotifyPropertyChanged()
         End Set
     End Property
@@ -581,22 +478,20 @@ Public Class VoicesPageViewModel
 
                                    With Exporter
                                        For Each key As Long In .OPNVoices.Keys
-                                           OPNVoices.Add(key, .OPNVoices(key))
+                                           FMVoices.Add(key, .OPNVoices(key))
                                        Next
                                        For Each key As Long In .YM2612PCMVoices.Keys
                                            YM2612PCMVoices.Add(key, .YM2612PCMVoices(key))
                                        Next
                                        For Each key As Long In .OPMVoices.Keys
-                                           OPMVoices.Add(key, .OPMVoices(key))
+                                           FMVoices.Add(key, .OPMVoices(key))
                                        Next
-                                       For Each key As Long In .RFC5164Voices.Keys
-                                           RFC5164Voices.Add(key, .RFC5164Voices(key))
+                                       For Each key As Long In .RF5CVoices.Keys
+                                           RF5CVoices.Add(key, .RF5CVoices(key))
                                        Next
-                                       RFC5164VoiceChannels.AddRange(.RFC5164VoiceChannels)
                                        For Each key As Long In .SegaPCMVoices.Keys
                                            SegaPCMVoices.Add(key, .SegaPCMVoices(key))
                                        Next
-                                       SegaPCMVoiceChannels.AddRange(.SegaPCMVoiceChannels)
                                    End With
 
                                    RaiseEvent Completed(Me, New EventArgs)

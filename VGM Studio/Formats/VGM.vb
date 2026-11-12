@@ -1,4 +1,5 @@
 ﻿Imports System.ComponentModel
+Imports System.Diagnostics.Eventing.Reader
 Imports System.IO
 
 Public Class VGM
@@ -807,43 +808,30 @@ Public Class VGM
 
     Public Enum CommandType As Byte
         'Supports up to v1.70
-        GG_Stereo = &H4F
-        PSG = &H50
+        Mikey = &H40
 
-        YM2413 = &H51
-        YM2612_Port_0 = &H52
-        YM2612_Port_1 = &H53
-        YM2151 = &H54
-        YM2203 = &H55
-        YM2608_Port_0 = &H56
-        YM2608_Port_1 = &H57
-        YM2610_Port_0 = &H58
-        YM2610_Port_1 = &H59
-        YM3812 = &H5A
-        YM3526 = &H5B
-        Y8950 = &H5C
-        YMZ280B = &H5D
-        YMF262_Port_0 = &H5E
-        YMF262_Port_1 = &H5F
+        GG_Stereo = &H4F        'has dual chip support
+        PSG = &H50              '"
 
-        'Dual chip cupport for PSG and YM-family chips (see Dual Chip Support #1)
+        'Dual chip support for PSG (see Dual Chip Support #1)
         GG_Stereo_2 = &H3F
         PSG_2 = &H30
-        YM2413_2 = &HA1
-        YM2612_Port_0_2 = &HA2
-        YM2612_Port_1_2 = &HA3
-        YM2151_2 = &HA4
-        YM2203_2 = &HA5
-        YM2608_Port_0_2 = &HA6
-        YM2608_Port_1_2 = &HA7
-        YM2610_Port_0_2 = &HA8
-        YM2610_Port_1_2 = &HA9
-        YM3812_2 = &HAA
-        YM3526_2 = &HAB
-        Y8950_2 = &HAC
-        YMZ280B_2 = &HAD
-        YMF262_Port_0_2 = &HAE
-        YMF262_Port_1_2 = &HAF
+
+        YM2413 = &H51           'has dual chip support
+        YM2612_Port_0 = &H52    '"
+        YM2612_Port_1 = &H53    '"
+        YM2151 = &H54           '"
+        YM2203 = &H55           '"
+        YM2608_Port_0 = &H56    '"
+        YM2608_Port_1 = &H57    '"
+        YM2610_Port_0 = &H58    '"
+        YM2610_Port_1 = &H59    '"
+        YM3812 = &H5A           '"
+        YM3526 = &H5B           '"
+        Y8950 = &H5C            '"
+        YMZ280B = &H5D          '"
+        YMF262_Port_0 = &H5E    '"
+        YMF262_Port_1 = &H5F    '"
 
         Wait_n_Samples = &H61
         Wait_735_Samples = &H62
@@ -894,34 +882,63 @@ Public Class VGM
         DAC_Stream_ControlWrite_4 = &H94
         DAC_Stream_ControlWrite_5 = &H95
 
-        AY8910 = &HA0
+        AY8910 = &HA0           'has dual chip support
+
+        'Dual chip support for YM-family chips (see Dual Chip Support #1)
+        YM2413_2 = &HA1
+        YM2612_Port_0_2 = &HA2
+        YM2612_Port_1_2 = &HA3
+        YM2151_2 = &HA4
+        YM2203_2 = &HA5
+        YM2608_Port_0_2 = &HA6
+        YM2608_Port_1_2 = &HA7
+        YM2610_Port_0_2 = &HA8
+        YM2610_Port_1_2 = &HA9
+        YM3812_2 = &HAA
+        YM3526_2 = &HAB
+        Y8950_2 = &HAC
+        YMZ280B_2 = &HAD
+        YMF262_Port_0_2 = &HAE
+        YMF262_Port_1_2 = &HAF
 
         RF5C68_8bit = &HB0
         RF5C164_8bit = &HB1
         PWM = &HB2
-        GameBoy_DMG = &HB3
-        NES_APU = &HB4
-        MultiPCM = &HB5
-        uPD7759 = &HB6
-        OKIM6258 = &HB7
-        OKIM6295 = &HB8
-        HuC6280 = &HB9
-        K053260 = &HBA
-        Pokey = &HBB
+        GameBoy_DMG = &HB3      'has dual chip support
+        NES_APU = &HB4          '"
+        MultiPCM = &HB5         '"
+        uPD7759 = &HB6          '"
+        MSM6258 = &HB7          '"
+        MSM6295 = &HB8          '"
+        HuC6280 = &HB9          '"
+        K051649_K052539 = &HBA  '"
+        Pokey = &HBB            '"
+        WonderSwan_8Bit = &HBC  '"
+        SAA1099 = &HBD          '"
+        ES5506_8Bit = &HBE      '"
+        GA20 = &HBF             '"
 
-        SegaPCM = &HC0
+        SegaPCM = &HC0          'has dual chip support
         RF5C68_16bit = &HC1
         RF5C164_16bit = &HC2
         MultiPCM_Set_Bank_Offset = &HC3
-        QSound = &HC4
+        QSound = &HC4           'has dual chip support
+        SCSP = &HC6             '"
+        WonderSwan_16Bit = &HC7 '"
+        VSU = &HC8              '"
+        X1010 = &HC9            '"
 
-        YMF278B = &HD0
-        YMF271 = &HD1
+        YMF278B = &HD0          'has dual chip support
+        YMF271 = &HD1           '"
         SCC1 = &HD2
-        K054539 = &HD3
-        C140 = &HD4
+        K054539 = &HD3          'has dual chip support
+        C140 = &HD4             '"
+        ES5503 = &HD5           '"
+        ES5506_16Bit = &HD6     '"
 
         Seek_to_Data_Offset = &HE0
+
+        C352 = &HE1             'has dual chip support
     End Enum
 
     Public Enum DataBlockType As Byte
@@ -965,25 +982,6 @@ Public Class VGM
         Public ReadOnly Property Offset As Long
         Public ReadOnly Property CommandType As CommandType
 
-        'Protected _CommandType As CommandType
-        'Public Property CommandType As CommandType
-        '    Get
-        '        Select Case _CommandType
-        '            Case CommandType.GG_Stereo_2
-        '                Return CommandType.GG_Stereo
-        '            Case CommandType.PSG_2
-        '                Return CommandType.PSG
-        '            Case CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
-        '                Return (_CommandType And &HF) Or &H50
-        '            Case Else
-        '                Return _CommandType
-        '        End Select
-        '    End Get
-        '    Protected Set(value As CommandType)
-        '        _CommandType = value
-        '    End Set
-        'End Property
-
         Public ReadOnly Property Sample As Long
 
         Public ReadOnly Property Hours As Integer
@@ -1010,14 +1008,25 @@ Public Class VGM
             End Get
         End Property
 
+        Protected _ChipIndex As Integer = 0
+        Public Property ChipIndex As Integer
+            Get
+                Return _ChipIndex
+            End Get
+            Protected Set(value As Integer)
+                _ChipIndex = value
+            End Set
+        End Property
+
         Public Overridable ReadOnly Property Description As String
         Public Overridable ReadOnly Property Details As String = ""
 
-        Sub New(offset As Long, type As CommandType, sample As Long)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte)
             MyBase.New
             _Offset = offset
             _CommandType = type
             _Sample = sample
+            _ChipIndex = chipIndex
         End Sub
 
     End Class
@@ -1029,77 +1038,55 @@ Public Class VGM
 
         Public ReadOnly Property ChipName As String
             Get
-                Dim cmdType As CommandType
-                Select Case CommandType
-                    Case CommandType.GG_Stereo_2
-                        cmdType = CommandType.GG_Stereo
-                    Case CommandType.PSG_2
-                        cmdType = CommandType.PSG
-                    Case CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
-                        cmdType = (CommandType And &HF) Or &H50
-                    Case Else
-                        cmdType = CommandType
-                End Select
-                Return cmdType.ToString.Replace("_", " ")
-            End Get
-        End Property
-
-        Public ReadOnly Property ChipIndex As Integer
-            Get
-                Select Case CommandType
-                    Case CommandType.GG_Stereo_2, CommandType.PSG_2, CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
-                        Return 1
-                    Case CommandType.AY8910 To CommandType.Pokey, CommandType.RF5C164_16bit To CommandType.C140
-                        Return If(Value(0) And &H80, 1, 0)
-                    Case CommandType.SegaPCM
-                        Return If(Value(1) And &H80, 1, 0)
-                End Select
-                Return 0
+                Return CommandType.ToString.Replace("_", " ")
             End Get
         End Property
 
         Public Overrides ReadOnly Property Description As String
             Get
+                'Dim chipIdxStr As String =
+                '    $" (Chip {ChipIndex + 1})"
+                Dim returnStr As String
                 Select Case CommandType
                     Case CommandType.GG_Stereo, CommandType.PSG
-                        Return $"Write 0x{Value(0):X2}"
+                        returnStr = $"Write 0x{Value(0):X2}"
 
-                    Case CommandType.YM2413 To CommandType.YMF262_Port_1, CommandType.AY8910 To CommandType.Pokey
-                        Return $"Write 0x{Value(1):X2} to addr 0x{Value(0):X2}"
+                    Case CommandType.YM2413 To CommandType.YMF262_Port_1, CommandType.AY8910 To CommandType.GA20
+                        returnStr = $"Write 0x{Value(1):X2} to addr 0x{Value(0):X2}"
 
                     Case CommandType.SegaPCM To CommandType.RF5C164_16bit
-                        Return $"Write 0x{Value(2):X2} to addr 0x{Value(1):X2}{Value(0):X2}"
+                        returnStr = $"Write 0x{Value(2):X2} to addr 0x{Value(1):X2}{Value(0):X2}"
 
                     Case CommandType.MultiPCM_Set_Bank_Offset
-                        Return $"Set ch 0x{Value(0):X2} offset to addr 0x{Value(1):X2}{Value(2):X2}"
+                        returnStr = $"Set ch 0x{Value(0):X2} offset to addr 0x{Value(1):X2}{Value(2):X2}"
 
                     Case CommandType.QSound
-                        Return $"Write 0x{Value(0):X2}{Value(1):X2} to addr 0x{Value(2):X2}"
+                        returnStr = $"Write 0x{Value(0):X2}{Value(1):X2} to addr 0x{Value(2):X2}"
 
                     Case CommandType.YMF278B To CommandType.SCC1
-                        Return $"Write 0x{Value(2):X2} to port {Value(0)} addr 0x{Value(1):X2}"
+                        returnStr = $"Write 0x{Value(2):X2} to port {Value(0)} addr 0x{Value(1):X2}"
 
                     Case CommandType.K054539, CommandType.C140
-                        Return $"Write 0x{Value(2):X2} to addr 0x{Value(1):X2}{Value(0):X2}"
+                        returnStr = $"Write 0x{Value(2):X2} to addr 0x{Value(1):X2}{Value(0):X2}"
 
                     Case Else
-                        Return $"Unknown command"
+                        returnStr = $"Unknown command"
 
                 End Select
-
+                Return returnStr '& chipIdxStr
             End Get
         End Property
 
         Public Overrides ReadOnly Property Details As String
 
-        Sub New(offset As Long, type As CommandType, sample As Long, value As Byte(), details As String)
-            MyBase.New(offset, type, sample)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Integer, value As Byte(), details As String)
+            MyBase.New(offset, type, sample, chipIndex)
             _Value = value
             _Details = details
         End Sub
 
         Sub New(cmd As ChipCommand, details As String)
-            Me.New(cmd.Offset, cmd.CommandType, cmd.Sample, cmd.Value, details)
+            Me.New(cmd.Offset, cmd.CommandType, cmd.Sample, cmd.ChipIndex, cmd.Value, details)
         End Sub
 
     End Class
@@ -1116,7 +1103,7 @@ Public Class VGM
         End Property
 
         Sub New(offset As Long, type As CommandType, sample As Long, sampleCount As Integer)
-            MyBase.New(offset, type, sample)
+            MyBase.New(offset, type, sample, 0)
             _SampleCount = sampleCount
         End Sub
 
@@ -1133,11 +1120,11 @@ Public Class VGM
         End Property
         Public Overrides ReadOnly Property Details As String
             Get
-                Return $"Data length {Data.Length}"
+                Return $"Data length {Data.Length} bytes"
             End Get
         End Property
-        Sub New(offset As Long, type As CommandType, sample As Long, dataType As DataBlockType, data As Byte())
-            MyBase.New(offset, type, sample)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte, dataType As DataBlockType, data As Byte())
+            MyBase.New(offset, type, sample, chipIndex)
             _DataType = dataType
             _Data = data
         End Sub
@@ -1164,8 +1151,8 @@ Public Class VGM
                 Return $"Write address 0x{WriteAddr:X4}; Data length {Data.Length} bytes"
             End Get
         End Property
-        Sub New(offset As Long, type As CommandType, sample As Long, dataType As DataBlockType, data As Byte())
-            MyBase.New(offset, type, sample, dataType, data)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte, dataType As DataBlockType, data As Byte())
+            MyBase.New(offset, type, sample, chipIndex, dataType, data)
         End Sub
 
     End Class
@@ -1195,8 +1182,8 @@ Public Class VGM
                 Return $"ROM size {ROMSize} bytes; Write addr 0x{WriteAddr:X8}"
             End Get
         End Property
-        Sub New(offset As Long, type As CommandType, sample As Long, dataType As DataBlockType, data As Byte())
-            MyBase.New(offset, type, sample, dataType, data)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte, dataType As DataBlockType, data As Byte())
+            MyBase.New(offset, type, sample, chipIndex, dataType, data)
         End Sub
 
     End Class
@@ -1213,8 +1200,8 @@ Public Class VGM
             End Get
         End Property
 
-        Sub New(offset As Long, type As CommandType, sample As Long, chipType As DataBlockType, readAddr As UInteger, writeAddr As UInteger, length As UInteger)
-            MyBase.New(offset, type, sample)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte, chipType As DataBlockType, readAddr As UInteger, writeAddr As UInteger, length As UInteger)
+            MyBase.New(offset, type, sample, chipIndex)
             _DataType = chipType
             _ReadAddr = readAddr
             _WriteAddr = writeAddr
@@ -1230,12 +1217,12 @@ Public Class VGM
 
         Public Overrides ReadOnly Property Description As String
             Get
-                Return $"Seek to offset 0x{SeekOffset:X8}"
+                Return $"Seek to offset 0x{SeekOffset:X8} (Chip {ChipIndex + 1})"
             End Get
         End Property
 
-        Sub New(offset As Long, type As CommandType, sample As Long, seekOffset As Long)
-            MyBase.New(offset, type, sample)
+        Sub New(offset As Long, type As CommandType, sample As Long, chipIndex As Byte, seekOffset As Long)
+            MyBase.New(offset, type, sample, chipIndex)
             _SeekOffset = seekOffset
         End Sub
 
@@ -1251,7 +1238,7 @@ Public Class VGM
         End Property
 
         Sub New(offset As Long, sample As Long)
-            MyBase.New(offset, CommandType.End_Of_Sound_Data, sample)
+            MyBase.New(offset, CommandType.End_Of_Sound_Data, sample, 0)
         End Sub
 
     End Class
@@ -1398,7 +1385,7 @@ Public Class VGM
         Public Property YMZ280BClock As UInteger
         Public Property IsDualYMZ280B As Boolean
         Public Property RF5C164Clock As UInteger
-        Public Property IsDualRFC5164 As Boolean
+        Public Property IsDualRF5C164 As Boolean
         Public Property PWMClock As UInteger
         Public Property IsDualPWM As Boolean
         Public Property AY8910Clock As UInteger
@@ -1502,6 +1489,7 @@ Public Class VGM
                 Using fs As New FileStream(FileInfo.FullName, FileMode.Open, FileAccess.Read)
                     Using br As New BinaryReader(fs)
                         Dim id As Byte() = br.ReadBytes(2)
+                        'Check for magic number
                         If id(0) = &H1F And id(1) = &H8B Then
                             _IsCompressed = True
                         End If
@@ -1667,7 +1655,7 @@ Public Class VGM
 
                             clock = .ReadUInt32
                             RF5C164Clock = clock And Clock_Mask
-                            IsDualRFC5164 = (clock And Dual_Chip_Mask) <> 0
+                            IsDualRF5C164 = (clock And Dual_Chip_Mask) <> 0
 
                             clock = .ReadUInt32
                             PWMClock = clock And Clock_Mask
@@ -1752,6 +1740,7 @@ Public Class VGM
                                 .BaseStream.Seek(4, SeekOrigin.Current) 'skip reserved bytes
 
                                 If Version >= VGMVersion.v1_70 Then
+                                    'TODO: Fully implement extra header
                                     ExtraHeaderOffset = .ReadUInt32
                                 End If
 
@@ -1795,37 +1784,82 @@ Public Class VGM
                             .ReadByte
 
                         Select Case cmdType
-                            Case CommandType.GG_Stereo, CommandType.PSG
+                            Case CommandType.GG_Stereo, CommandType.PSG,
+                                 CommandType.GG_Stereo_2, CommandType.PSG_2
                                 '0x4f dd    : Game Gear PSG stereo, write dd to port 0x06
                                 '0x50 dd    : PSG (SN76489/SN76496) write value dd
+                                '0x3f dd    : Game Gear PSG #2
+                                '0x30 dd    : PSG #2
 
                                 Dim value As Byte = .ReadByte
 
-                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, {value}, ""))
+                                Dim chipIdx As Integer
+                                Select Case cmdType
+                                    Case CommandType.GG_Stereo_2, CommandType.PSG_2
+                                        If cmdType = CommandType.GG_Stereo_2 Then
+                                            cmdType = CommandType.GG_Stereo
+                                        Else
+                                            cmdType = CommandType.PSG
+                                        End If
+                                        chipIdx = 1
+                                    Case Else
+                                        chipIdx = 0
+                                End Select
 
-                            Case CommandType.YM2413 To CommandType.YMF262_Port_1, CommandType.AY8910 To CommandType.Pokey
+                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, chipIdx, {value}, ""))
+
+                            Case CommandType.YM2413 To CommandType.YMF262_Port_1,
+                                 CommandType.AY8910 To CommandType.GA20
                                 '0xnn aa dd : Chip write value dd to register aa
 
                                 Dim addr As Byte = .ReadByte
                                 Dim value As Byte = .ReadByte
 
-                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, {addr, value}, ""))
+                                Dim chipIdx As Integer
+                                Select Case cmdType
+                                    'Case CommandType.YM2413 To CommandType.YMF262_Port_1
+                                    '    chipIdx = 0
+                                    Case CommandType.YM2413_2 To CommandType.YMF262_Port_1_2
+                                        cmdType = (cmdType And &HF) Or &H50
+                                        chipIdx = 1
+                                    Case CommandType.AY8910, CommandType.GameBoy_DMG To CommandType.GA20
+                                        chipIdx = If(value And &H80, 1, 0)
+                                    Case Else
+                                        chipIdx = 0
+                                End Select
 
-                            Case CommandType.SegaPCM To &HCF, CommandType.YMF278B To &HDF
+                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, chipIdx, {addr, value}, ""))
+
+                            Case CommandType.SegaPCM To CommandType.X1010, CommandType.YMF278B To CommandType.ES5506_16Bit
                                 'Three bytes of operands
 
                                 Dim operands As Byte() =
                                     .ReadBytes(3)
 
-                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, operands, ""))
+                                Dim chipIdx As Integer
+                                Select Case cmdType
+                                    Case CommandType.SegaPCM
+                                        chipIdx = If(operands(1) And &H80, 1, 0)
+                                    Case CommandType.QSound To CommandType.X1010,
+                                            CommandType.YMF278B To CommandType.YMF271,
+                                            CommandType.K054539 To CommandType.ES5506_16Bit
+                                        chipIdx = If(operands(0) And &H80, 1, 0)
+                                    Case Else
+                                        chipIdx = 0
+                                End Select
 
-                            Case &HE1 To &HFF
+                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, chipIdx, operands, ""))
+
+                            Case CommandType.C352 To &HFF
                                 'Four bytes of operands
 
                                 Dim operands As Byte() =
                                     .ReadBytes(4)
 
-                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, operands, ""))
+                                Dim chipIdx As Integer =
+                                    If(operands(0) And &H80, 1, 0)
+
+                                cmdList.Add(New ChipCommand(offset, cmdType, curSample, chipIdx, operands, ""))
 
                             Case CommandType.Wait_n_Samples
                                 '0x61 nn nn : Wait n samples, n can range from 0 to 65535 (approx 1.49
@@ -1874,23 +1908,28 @@ Public Class VGM
                                 Dim dataType As DataBlockType =
                                     .ReadByte
 
-                                Dim size As Long =
+                                Dim size As ULong =
                                     .ReadUInt32
+
+                                Dim chipIdx As UInteger =
+                                    If(size And &H80000000UI, 1, 0)
+
+                                size = size And &H7FFFFFFFUI
 
                                 Dim data As Byte() =
                                     .ReadBytes(size)
 
                                 Select Case dataType
                                     Case DataBlockType.YM2612_PCM_Data To DataBlockType.PWM_PCM_Data
-                                        cmdList.Add(New DataBlockCommand(offset, cmdType, curSample, dataType, data))
+                                        cmdList.Add(New DataBlockCommand(offset, cmdType, curSample, chipIdx, dataType, data))
                                     Case DataBlockType.YM2612_Compressed_PCM_Data To DataBlockType.PWM_Compressed_PCM_Data
-                                        cmdList.Add(New DataBlockCommand(offset, cmdType, curSample, dataType, data))
+                                        cmdList.Add(New DataBlockCommand(offset, cmdType, curSample, chipIdx, dataType, data))
                                     Case &H7F
                                         'TODO: Implement decompression table
                                     Case DataBlockType.SegaPCM_ROM_Data To DataBlockType.QSound_ROM_Data
-                                        cmdList.Add(New ROMDataBlockCommand(offset, cmdType, curSample, dataType, data))
+                                        cmdList.Add(New ROMDataBlockCommand(offset, cmdType, curSample, chipIdx, dataType, data))
                                     Case DataBlockType.RF5C68_RAM_Write To DataBlockType.NESAPU_RAM_Write
-                                        cmdList.Add(New RAMWriteDataBlockCommand(offset, cmdType, curSample, dataType, data))
+                                        cmdList.Add(New RAMWriteDataBlockCommand(offset, cmdType, curSample, chipIdx, dataType, data))
                                 End Select
 
                             Case CommandType.PCM_RAM_Write
@@ -1911,18 +1950,18 @@ Public Class VGM
 
                                 Dim bytes As Byte() =
                                     { .ReadByte, .ReadByte, .ReadByte, 0}
-                                Dim readOffset As Integer =
-                                    BitConverter.ToInt32(bytes)
+                                Dim readOffset As UInteger =
+                                    BitConverter.ToUInt32(bytes)
 
                                 bytes = { .ReadByte, .ReadByte, .ReadByte, 0}
-                                Dim writeOffset As Integer =
-                                    BitConverter.ToInt32(bytes)
+                                Dim writeOffset As UInteger =
+                                    BitConverter.ToUInt32(bytes)
 
                                 bytes = { .ReadByte, .ReadByte, .ReadByte, 0}
-                                Dim length As Integer =
-                                    BitConverter.ToInt32(bytes)
+                                Dim length As UInteger =
+                                    BitConverter.ToUInt32(bytes)
 
-                                cmdList.Add(New PCMRAMWriteCommand(offset, cmdType, curSample, chipType, readOffset, writeOffset, length))
+                                cmdList.Add(New PCMRAMWriteCommand(offset, cmdType, curSample, 0, chipType, readOffset, writeOffset, length))
 
                             Case CommandType.Wait_n_Plus_1_Sample To CommandType.Wait_n_Plus_16_Samples
                                 '0x7n       : wait n+1 samples, n can range from 0 to 15.
@@ -1949,10 +1988,16 @@ Public Class VGM
                             Case CommandType.Seek_to_Data_Offset
                                 '0xe0 dddddddd : seek to offset dddddddd (Intel byte order) in PCM data bank
 
-                                Dim seekOffset As Long =
+                                Dim seekOffset As ULong =
                                     .ReadUInt32
 
-                                cmdList.Add(New SeekCommand(offset, cmdType, curSample, seekOffset))
+                                Dim chipIdx As UInteger =
+                                    If(seekOffset And &H80000000UI, 1, 0)
+
+                                seekOffset = seekOffset And &H7FFFFFFFUI
+
+
+                                cmdList.Add(New SeekCommand(offset, cmdType, curSample, chipIdx, seekOffset))
 
                             Case CommandType.End_Of_Sound_Data
                                 '0x66       : end of sound data

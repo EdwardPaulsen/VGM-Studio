@@ -7,6 +7,119 @@
       mc:Ignorable="d" 
       d:DesignHeight="800" d:DesignWidth="800"
       Title="VoicesPage">
+
+    <Grid>
+        <DockPanel>
+            <Label Content="Voices" FontWeight="Bold" FontSize="18" DockPanel.Dock="Top"/>
+
+            <ScrollViewer DockPanel.Dock="Top">
+
+                <StackPanel Orientation="Vertical">
+                    <ProgressBar x:Name="MainProgressBar" DockPanel.Dock="Top" Height="20" Margin="10,0,10,0" Minimum="0" Maximum="1" Value="{Binding ProgressValue}" Visibility="Visible"/>
+
+                    <StackPanel x:Name="FMStackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
+                        <StackPanel Orientation="Horizontal">
+                            <Label x:Name="FMLabel" Content="FM" Margin="0,10,0,0" FontSize="14" FontWeight="Bold"></Label>
+                            <Button x:Name="ExportFMButton" Content="E_xport" Margin="10,0,0,0" VerticalAlignment="Bottom">
+                                <Button.ContextMenu>
+                                    <ContextMenu x:Name="FMExportButtonMenu">
+                                        <MenuItem x:Name="ExportThisFMVoiceMenuItem" Header="_This voice..."></MenuItem>
+                                        <MenuItem x:Name="ExportAllFMVoicesMenuItem" Header="_All voices..."></MenuItem>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Index" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="FMVoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=FMVoice}" ItemStringFormat="{}{0:00}"></ComboBox>
+                            </StackPanel>
+                            <Label Content="{Binding Path=FMVoiceInfo, Mode=OneWay}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel x:Name="YM2612PCMStackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
+                        <Label Content="YM2612 PCM" Margin="0,10,0,0" FontSize="14" FontWeight="Bold"></Label>
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Index" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="YM2612PCMVoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=YM2612PCMVoice}" ItemStringFormat="{}{0:X8}"></ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Vertical">
+                                <Label Margin="10,0,0,0" Content="Speed"></Label>
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox x:Name="YM2612PCMFreqComboBox" Margin="10,0,0,0" Width="Auto" SelectedValue="{Binding Path=YM2612PCMFreq}" ItemStringFormat="{}{0} Hz"></ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="YM2612PCMPlayButton" VerticalAlignment="Bottom" Margin="10,0,0,0" Content="▶️"></Button>
+                                <Label Content="{Binding Path=YM2612PCMVoice.StartAddr, Mode=OneWay}" ContentStringFormat="Start=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=YM2612PCMVoice.EndAddr, Mode=OneWay}" ContentStringFormat="End=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Name="RF5CStackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
+                        <Label Content="Ricoh RF5C Series PCM" Margin="0,10,0,0" FontSize="14" FontWeight="Bold"></Label>
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Index" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="RF5CVoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=RF5CVoice}" ItemStringFormat="{}{0:000}"></ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Speed" Margin="10,0,0,0"></Label>
+                                <ComboBox x:Name="RF5CVoiceSpeedComboBox" Margin="10,0,0,0" Width="Auto" SelectedValue="{Binding Path=RF5CVoiceSpeed}" ItemStringFormat="{}{0:F3} %"></ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Name="RF5CPlayButton" VerticalAlignment="Bottom" Margin="10,0,0,0" Content="▶️"></Button>
+                                <Label Content="{Binding Path=RF5CVoice.StartAddr, Mode=OneWay}" ContentStringFormat="Start=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=RF5CVoice.LoopAddr, Mode=OneWay}" ContentStringFormat="Loop=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=RF5CVoice.EndAddr, Mode=OneWay}" ContentStringFormat="End=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Name="SegaPCMStackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
+                        <Label Content="SegaPCM" Margin="0,10,0,0" FontSize="14" FontWeight="Bold" ></Label>
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Index" Margin="10,0,0,0"></Label>
+                                <ComboBox x:Name="SegaPCMVoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=SegaPCMVoice}" ItemStringFormat="{}{0:X8}"></ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Vertical">
+                                <Label Content="Speed" Margin="10,0,0,0"></Label>
+                                <ComboBox x:Name="SegaPCMVoiceSpeedComboBox" Margin="10,0,0,0" Width="Auto" SelectedValue="{Binding Path=SegaPCMVoiceSpeed}" ItemStringFormat="{}{0:F3} %"></ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button x:Name="SegaPCMPlayButton" Margin="10,0,0,0" VerticalAlignment="Bottom" Content="▶️"></Button>
+                                <Label Content="{Binding Path=SegaPCMVoice.StartAddr, Mode=OneWay}" ContentStringFormat="Start=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=SegaPCMVoice.LoopAddr, Mode=OneWay}" ContentStringFormat="Loop=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=SegaPCMVoice.EndAddr, Mode=OneWay}" ContentStringFormat="End=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                </StackPanel>
+
+            </ScrollViewer>
+
+        </DockPanel>
+
+    </Grid>
+
+</Page>
+
+
+
+<!--<Page x:Class="VGMVoicesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:VGM_Studio" d:DataContext="{d:DesignInstance Type=local:VoicesPageViewModel}"
+      mc:Ignorable="d" 
+      d:DesignHeight="800" d:DesignWidth="800"
+      Title="VoicesPage">
        
     <Grid>
         <DockPanel>
@@ -80,23 +193,22 @@
                         </StackPanel>
                     </StackPanel>
 
-
-                    <StackPanel Name="RFC5164StackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
-                        <Label Content="RFC5164" Margin="0,10,0,0" FontSize="14" FontWeight="Bold"></Label>
+                    <StackPanel Name="RF5CStackPanel" Orientation="Vertical" Visibility="Collapsed" d:Visibility="Visible">
+                        <Label Content="Ricoh RF5C Series PCM" Margin="0,10,0,0" FontSize="14" FontWeight="Bold"></Label>
                         <StackPanel Orientation="Horizontal">
                             <StackPanel Orientation="Vertical">
                                 <Label Content="Index" Margin="10,0,0,0"/>
-                                <ComboBox x:Name="RFC5164VoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=RFC5164Voice}" ItemStringFormat="{}{0:X8}"></ComboBox>
+                                <ComboBox x:Name="RF5CVoiceComboBox" Margin="10,0,0,0" Width="Auto" DisplayMemberPath ="Key" SelectedValuePath="Value" SelectedValue="{Binding Path=RF5CVoice}" ItemStringFormat="{}{0:000}"></ComboBox>
                             </StackPanel>
                             <StackPanel Orientation="Vertical">
                                 <Label Content="Speed" Margin="10,0,0,0"></Label>
-                                <ComboBox x:Name="RFC5164VoiceSpeedComboBox" Margin="10,0,0,0" Width="Auto" SelectedValue="{Binding Path=RFC5164VoiceSpeed}" ItemStringFormat="{}{0:F3} %"></ComboBox>
+                                <ComboBox x:Name="RF5CVoiceSpeedComboBox" Margin="10,0,0,0" Width="Auto" SelectedValue="{Binding Path=RF5CVoiceSpeed}" ItemStringFormat="{}{0:F3} %"></ComboBox>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
-                                <Button Name="RFC5164PlayButton" VerticalAlignment="Bottom" Margin="10,0,0,0" Content="▶️"></Button>
-                                <Label Content="{Binding Path=RFC5164Voice.StartAddr, Mode=OneWay}" ContentStringFormat="Start=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
-                                <Label Content="{Binding Path=RFC5164Voice.LoopAddr, Mode=OneWay}" ContentStringFormat="Loop=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
-                                <Label Content="{Binding Path=RFC5164Voice.EndAddr, Mode=OneWay}" ContentStringFormat="End=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Button Name="RF5CPlayButton" VerticalAlignment="Bottom" Margin="10,0,0,0" Content="▶️"></Button>
+                                <Label Content="{Binding Path=RF5CVoice.StartAddr, Mode=OneWay}" ContentStringFormat="Start=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=RF5CVoice.LoopAddr, Mode=OneWay}" ContentStringFormat="Loop=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
+                                <Label Content="{Binding Path=RF5CVoice.EndAddr, Mode=OneWay}" ContentStringFormat="End=0x{0:X8}" Margin="10,0,0,0" VerticalAlignment="Bottom"/>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
@@ -129,4 +241,4 @@
 
     </Grid>
 
-</Page>
+</Page>-->

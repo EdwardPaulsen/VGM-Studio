@@ -162,12 +162,23 @@ Public Class SegaPCM
 
     End Class
 
-    Public Structure Voice
+    Public Class Voice
         Public ReadOnly Property Index As Long
         Public ReadOnly Property StartAddr As UInteger
         Public ReadOnly Property EndAddr As UInteger
         Public ReadOnly Property LoopAddr As UInteger
         Public ReadOnly Property Data As Byte()
+        Public ReadOnly Property DataHash As String
+            Get
+                If Data Is Nothing Then
+                    Return String.Empty
+                Else
+                    Dim dataHashBytes As Byte() =
+                        Security.Cryptography.SHA1.HashData(Data)
+                    Return Convert.ToHexString(dataHashBytes)
+                End If
+            End Get
+        End Property
         Public ReadOnly Property AddrIncs As SortedSet(Of UInteger)
         Public ReadOnly Property Speeds As SortedSet(Of Single)
         Public ReadOnly Property Length As UInteger
@@ -181,7 +192,7 @@ Public Class SegaPCM
             End Get
         End Property
         Public Property Looped As Boolean
-        Sub New(index As Long, startAddr As UInteger, endAddr As UInteger, loopAddr As UInteger, ByRef pcmData As Byte())
+        Sub New(index As Long, ByRef chip As Chip, startAddr As UInteger, endAddr As UInteger, loopAddr As UInteger, ByRef pcmData As Byte())
             _Index = index
             _StartAddr = startAddr
             _EndAddr = endAddr
@@ -194,13 +205,15 @@ Public Class SegaPCM
                 Array.Copy(pcmData, startAddr, _Data, 0, length)
             End If
             AddrIncs = New SortedSet(Of UInteger)
-            Speeds = New SortedSet(Of Single)
+            Speeds = New SortedSet(Of Single) From {
+                100
+            }
         End Sub
         Sub New(sample As Long, ByRef ch As Channel, ByRef pcmdata As Byte())
-            Me.New(sample, ch.Bank + ch.StartAddr, ch.Bank + ch.EndAddr, ch.Bank + ch.LoopAddr, pcmdata)
+            Me.New(sample, ch.Chip, ch.Bank + ch.StartAddr, ch.Bank + ch.EndAddr, ch.Bank + ch.LoopAddr, pcmdata)
         End Sub
         Public Overrides Function GetHashCode() As Integer
-            Return HashCode.Combine(StartAddr, EndAddr, LoopAddr)
+            Return HashCode.Combine(StartAddr, EndAddr, LoopAddr, DataHash)
         End Function
         Public Overrides Function Equals(obj As Object) As Boolean
             If obj Is Nothing Then
@@ -215,7 +228,8 @@ Public Class SegaPCM
 
             If StartAddr = b.StartAddr AndAlso
                EndAddr = b.EndAddr AndAlso
-               LoopAddr = b.LoopAddr Then
+               LoopAddr = b.LoopAddr AndAlso
+               DataHash = b.DataHash Then
                 Return True
             End If
             Return False
@@ -236,7 +250,7 @@ Public Class SegaPCM
             End With
             Return sb.ToString
         End Function
-    End Structure
+    End Class
 
 #End Region
 

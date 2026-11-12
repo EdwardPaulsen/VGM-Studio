@@ -593,8 +593,12 @@ Public Class MidiExporter
                 midiCh.StopNote(0)
             Else
                 With ch
+                    'Dim fnote As Single =
+                    '    OPM.GetFNote(.Note, .Octave, .KeyFrac, .Op(3).Mul, chip.MasterClockFreq)
+                    'Dim fnote As Single =
+                    '    OPM.GetFNote(.KeyCode, .KeyFrac, 0, .Op(3).DT1, .Op(3).DT2, .Op(3).Mul, chip.IntSampleClockFreq)
                     Dim fnote As Single =
-                        OPM.GetFNote(.Note, .Octave, .KeyFrac, .Op(3).Mul, chip.MasterClockFreq)
+                        OPM.GetFNote(.Note, .Octave, .KeyFrac, .KeyCodePrime, .Op(3).DT1, .Op(3).DT2, .Op(3).Mul, chip.MasterClockFreq)
                     Dim note As New Note(fnote)
                     midiCh.PlayNote(note, Options.Velocity, 0)
                 End With
@@ -636,11 +640,14 @@ Public Class MidiExporter
             Dim midiCh As Channel =
                 MidiTrack.Channel(OPM_Base_Midi_Ch_Num + .Index)
             If midiCh.NoteOn(0) = True Then
+                'Dim fnote As Single =
+                '    OPM.GetFNote(.Note, .Octave, .KeyFrac, .Op(3).Mul, .Chip.MasterClockFreq)
+                'Dim fnote As Single =
+                '    OPM.GetFNote(.KeyCode, .KeyFrac, 0, .Op(3).DT1, .Op(3).DT2, .Op(3).Mul, .Chip.IntSampleClockFreq)
                 Dim fnote As Single =
-                    OPM.GetFNote(.Note, .Octave, .KeyFrac, .Op(3).Mul, .Chip.MasterClockFreq)
+                     OPM.GetFNote(.Note, .Octave, .KeyFrac, .KeyCodePrime, .Op(3).DT1, .Op(3).DT2, .Op(3).Mul, .Chip.MasterClockFreq)
                 Dim note As New Note(fnote)
                 midiCh.BendPitch(note, 0)
-                'midiCh.BendPitch(OPMKeyCodeToMidiNote(.Note, .Octave, .KeyFrac, .Op(3).Mul), 0)
             End If
         End With
 

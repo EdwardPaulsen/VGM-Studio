@@ -45,8 +45,8 @@ Public MustInherit Class Exporter
     Protected WithEvents YM2149Chip As YM2149.Chip
     Protected WithEvents YM2149Chip2 As YM2149.Chip
 
-    Protected WithEvents RFC5164Chip As RFC5164.Chip
-    Protected WithEvents RFC5164Chip2 As RFC5164.Chip
+    Protected WithEvents RF5C68Chip As RF5C68.Chip
+    Protected WithEvents RF5C164Chip As RF5C164.Chip
 
     Protected WithEvents C140Chip As C140.Chip
     Protected WithEvents C140Chip2 As C140.Chip
@@ -112,8 +112,12 @@ Public MustInherit Class Exporter
             End If
         End If
 
+        If VGMFile.RF5C68Clock <> 0 Then
+            RF5C68Chip = New RF5C68.Chip(VGMFile.RF5C68Clock, extSampleClockFreq)
+        End If
+
         If VGMFile.RF5C164Clock <> 0 Then
-            RFC5164Chip = New RFC5164.Chip(VGMFile.RF5C164Clock, extSampleClockFreq)
+            RF5C164Chip = New RF5C164.Chip(VGMFile.RF5C164Clock, extSampleClockFreq)
         End If
 
         If VGMFile.C140Clock <> 0 Then
@@ -177,6 +181,9 @@ Public MustInherit Class Exporter
                         Case CommandType.YM3526
                             ProcessYM3526(cmd)
 
+                        Case CommandType.RF5C68_8bit
+                            ProcessRF5C68_8bit(cmd)
+
                         Case CommandType.RF5C164_8bit
                             ProcessRF5C164_8bit(cmd)
 
@@ -200,11 +207,9 @@ Public MustInherit Class Exporter
                     ProcessWait(waitCmd.SampleCount)
 
                 Case CommandType.Data_Block
-                    'Dim dataBlockCmd As DataBlockCommand = cmd
                     ProcessDataBlock(cmd)
 
                 Case CommandType.PCM_RAM_Write
-                    'Dim pcmRamWriteBlockCmd As PCMRAMWriteCommand = cmd
                     ProcessPCMRAMWrite(cmd)
 
                 Case CommandType.Seek_to_Data_Offset
@@ -370,14 +375,25 @@ Public MustInherit Class Exporter
 
     End Sub
 
+    Protected Overridable Sub ProcessRF5C68_8bit(cmd As ChipCommand)
+        Dim addr As Byte =
+            cmd.Value(0)
+        Dim value As Integer =
+            cmd.Value(1)
+
+        If IsChipAvailable(RF5C68Chip) Then
+            RF5C68Chip.Write(addr, value)
+        End If
+    End Sub
+
     Protected Overridable Sub ProcessRF5C164_8bit(cmd As ChipCommand)
         Dim addr As Byte =
             cmd.Value(0)
         Dim value As Integer =
             cmd.Value(1)
 
-        If IsChipAvailable(RFC5164Chip) Then
-            RFC5164Chip.Write(addr, value)
+        If IsChipAvailable(RF5C164Chip) Then
+            RF5C164Chip.Write(addr, value)
         End If
     End Sub
 
@@ -452,9 +468,9 @@ Public MustInherit Class Exporter
 
                 Select Case cmd.DataType
                     Case DataBlockType.RF5C68_RAM_Write
-                        'TODO: Implement this
+                        RF5C68Chip?.WriteToPCMRAM(rwCmd.Data, rwCmd.WriteAddr)
                     Case DataBlockType.RF5C164_RAM_Write
-                        RFC5164Chip?.WriteToPCMRAM(rwCmd.Data, rwCmd.WriteAddr)
+                        RF5C164Chip?.WriteToPCMRAM(rwCmd.Data, rwCmd.WriteAddr)
                     Case DataBlockType.NESAPU_RAM_Write
                         'TODO: Implement this
                 End Select
@@ -467,8 +483,12 @@ Public MustInherit Class Exporter
             Dim data(cmd.Length - 1) As Byte
             Array.Copy(DataBank.ToArray, .ReadAddr, data, 0, .Length)
             Select Case cmd.DataType
+                Case DataBlockType.RF5C68_PCM_Data
+                    RF5C68Chip?.WriteToPCMRAM(data, .WriteAddr)
+                    ProcessRF5CPCMRAMWrite(RF5C68Chip, .ReadAddr, .WriteAddr, data)
                 Case DataBlockType.RF5C164_PCM_Data
-                    RFC5164Chip?.WriteToPCMRAM(data, .WriteAddr)
+                    RF5C164Chip?.WriteToPCMRAM(data, .WriteAddr)
+                    ProcessRF5CPCMRAMWrite(RF5C164Chip, .ReadAddr, .WriteAddr, data)
             End Select
         End With
     End Sub
@@ -1230,62 +1250,61 @@ Public MustInherit Class Exporter
 
 #End Region
 
-#Region "RFC5164 Event Handlers"
-    Protected Overridable Sub RFC5164Chip_EnvelopeChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.EnvelopeChanged
+#Region "Ricoh RFC Series (RF5C68 and RF5C164) (8-bit) Event Handlers"
+    Protected Overridable Sub RF5CChip_EnvelopeChanged(ByRef ch As RF5C.Channel) Handles RF5C68Chip.EnvelopeChanged, RF5C164Chip.EnvelopeChanged
         With ch
             Details = $"Ch { .Index + 1} Envelope = { .Envelope}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_PanChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.PanChanged
+    Protected Overridable Sub RF5CChip_PanChanged(ByRef ch As RF5C.Channel) Handles RF5C68Chip.PanChanged, RF5C164Chip.PanChanged
         With ch
             Details = $"Ch { .Index + 1} Pan: L { .Pan(0)}, R { .Pan(1)}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_AddressIncrementChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.AddressIncrementChanged
+    Protected Overridable Sub RF5CChip_AddressIncrementChanged(ByRef ch As RF5C.Channel) Handles RF5C68Chip.AddressIncrementChanged, RF5C164Chip.AddressIncrementChanged
         With ch
-            Details = $"Ch { .Index + 1} Sample Rate = 0x{ .AddrInc:X4} ({ RFC5164.GetSampleRateInHz(.AddrInc, .Chip.MasterClockFreq):0.000} Hz)"
+            Dim Hz As Single =
+                    RF5C.GetSampleRateInHz(.AddrInc, .Chip.MasterClockFreq)
+            Dim pct As Single =
+                    Hz / .Chip.IntSampleClockFreq
+            Details = $"Ch { .Index + 1} Sample Rate = 0x{ .AddrInc:X4} ({ Hz:F3} Hz) ({pct * 100:F3}% speed)"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_LoopAddressChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.LoopAddressChanged
+    Protected Overridable Sub RF5CChip_LoopAddressChanged(ByRef ch As RF5C.Channel) Handles RF5C68Chip.LoopAddressChanged, RF5C164Chip.LoopAddressChanged
         With ch
             Details = $"Ch { .Index + 1} Loop Address 0x{ .LoopAddr:X4}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_StartAddressChanged(ByRef ch As RFC5164.PCMChannel) Handles RFC5164Chip.StartAddressChanged
+    Protected Overridable Sub RF5CChip_StartAddressChanged(ByRef ch As RF5C.Channel) Handles RF5C68Chip.StartAddressChanged, RF5C164Chip.StartAddressChanged
         With ch
             Details = $"Ch { .Index + 1} Start Address 0x{ .StartAddr:X4}"
         End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_ChannelLatchChanged(chIdx As Integer) Handles RFC5164Chip.ChannelLatchChanged
-        Details = $"Ch {chIdx + 1} Latched"
+    Protected Overridable Sub RF5CChip_ChannelLatchChanged(ByRef chip As RF5C.Chip) Handles RF5C68Chip.ChannelLatchChanged, RF5C164Chip.ChannelLatchChanged
+        With chip
+            Details = $"Ch { .ChannelLatch + 1} Latched"
+        End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_RAMWriteAddressChanged(addr As UInteger) Handles RFC5164Chip.RAMWriteAddressChanged
-        Details = $"PCM RAM Address 0x{addr:X8}"
+    Protected Overridable Sub RF5CChip_RAMWriteAddressChanged(ByRef chip As RF5C.Chip) Handles RF5C68Chip.RAMWriteAddressChanged, RF5C164Chip.RAMWriteAddressChanged
+        With chip
+            Details = $"PCM RAM Address 0x{ .RAMWriteAddr:X8}"
+        End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_ChipOutputEnabled(enabled As Boolean) Handles RFC5164Chip.ChipOutputEnabledChanged
-        Details = $"Chip Output {If(enabled, "Enabled", "Disabled")}"
+    Protected Overridable Sub RF5CChip_ChipOutputEnabled(ByRef chip As RF5C.Chip) Handles RF5C68Chip.ChipOutputEnabledChanged, RF5C164Chip.ChipOutputEnabledChanged
+        With chip
+            Details = $"Chip Output {If(.Enabled, "Enabled", "Disabled")}"
+        End With
     End Sub
-    Protected Overridable Sub RFC5164Chip_ChannelOutputEnabled(value As Byte) Handles RFC5164Chip.ChannelOutputEnabledChanged
+    Protected Overridable Sub RF5CChip_ChannelOutputEnabled(ByRef chip As RF5C.Chip) Handles RF5C68Chip.ChannelOutputEnabledChanged, RF5C164Chip.ChannelOutputEnabledChanged
         Details = $"Channel Output: "
         For chIdx As Integer = 0 To 7
-            Details &= $"{chIdx + 1} {If(((value >> chIdx) And 1) = 1, "ON", "OFF")}{If(chIdx < 7, ", ", "")}"
-        Next
-
-        Const RFC5164_Sample_Freq As Single = 32552.083333333332 '12500000 / 384
-
-        For chIdx As Integer = 0 To 7
-            With RFC5164Chip.Channel(chIdx)
-                If Not .Enabled Then
-                    Continue For
-                End If
-                Dim pct As Single =
-                    .AddrInc / Math.Pow(2, 11)
-                Dim Hz As Single =
-                    If(pct = 0, 0, RFC5164_Sample_Freq * pct)
-                Details &= $" (Ch {chIdx}: StartAddr = 0x{ .StartAddr << 11}, LoopAddr = 0x{ .LoopAddr << 11}, AddrInc = 0x{ .AddrInc} [{Hz:F3} Hz] [{pct * 100:F3}% speed])"
+            With chip.Channel(chIdx)
+                Details &= $"Ch { .Index + 1} {If(.Enabled, "ON", "OFF")}{If(chIdx < 7, ", ", "")}"
             End With
         Next
+    End Sub
 
+    Protected Overridable Sub ProcessRF5CPCMRAMWrite(ByRef chip As RF5C.Chip, readAddr As UInteger, writeAddr As UInteger, data As Byte())
     End Sub
 
 #End Region

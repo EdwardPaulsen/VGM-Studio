@@ -25,7 +25,12 @@
     <RepositoryUrl>https://github.com/EdwardPaulsen/VGM-Studio.git</RepositoryUrl>
     <PackageTags>VGM; chiptunes</PackageTags>
     <PackageReleaseNotes>Initial public release</PackageReleaseNotes>
+    <ApplicationIcon>Resources\ym2612.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\ym2612.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <Import Include="System.Windows" />

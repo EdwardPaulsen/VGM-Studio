@@ -98,7 +98,7 @@ Public Class InfoPageViewModel
             If .YMF278BClock <> 0 Then inl.Add(New Run($"{If(.IsDualYMF278B, "Dual ", "")}YMF278B @ { .YMF278BClock} Hz{nl}"))
             If .YMF271Clock <> 0 Then inl.Add(New Run($"{If(.IsDualYMF271, "Dual ", "")}YMF271 @ { .YMF271Clock} Hz{nl}"))
             If .YMZ280BClock <> 0 Then inl.Add(New Run($"{If(.IsDualYMZ280B, "Dual ", "")}YMZ280B @ { .YMZ280BClock} Hz{nl}"))
-            If .RF5C164Clock <> 0 Then inl.Add(New Run($"{If(.IsDualRFC5164, "Dual ", "")}RF5C164 @ { .RF5C164Clock} Hz{nl}"))
+            If .RF5C164Clock <> 0 Then inl.Add(New Run($"{If(.IsDualRF5C164, "Dual ", "")}RF5C164 @ { .RF5C164Clock} Hz{nl}"))
             If .PWMClock <> 0 Then inl.Add(New Run($"{If(.IsDualPWM, "Dual ", "")}PWM @ { .PWMClock} Hz{nl}"))
             If .AY8910Clock <> 0 Then inl.Add(New Run($"{If(.IsDualAY8910, "Dual ", "")}AY-3-8910 type { .AY8910Type} @ { .AY8910Clock} Hz, { .AY8910Flags}{nl}"))
 

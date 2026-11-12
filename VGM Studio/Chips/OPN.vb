@@ -575,20 +575,22 @@ Public Class OPN
 
     End Class
 
-    Public Structure Voice
-        Public ReadOnly Index As Long
+    Public Class Voice
+        Inherits FM.Voice
 
-        Private _VoiceName As String
-        Public Property VoiceName As String
-            Get
-                Return _VoiceName
-            End Get
-            Set(value As String)
-                _VoiceName = value.PadRight(10).Substring(0, 10)
-            End Set
-        End Property
+        'Public ReadOnly Index As Long
 
-        Public MasterClockFreq As UInteger
+        'Protected _VoiceName As String
+        'Public Property VoiceName As String
+        '    Get
+        '        Return _VoiceName
+        '    End Get
+        '    Set(value As String)
+        '        _VoiceName = value.PadRight(10).Substring(0, 10)
+        '    End Set
+        'End Property
+
+        'Public MasterClockFreq As UInteger
 
         Public LFOFreq As UInteger
 
@@ -628,10 +630,26 @@ Public Class OPN
         Public Ch3SpFNum As UInteger()
         Public Ch3SpHz As UInteger()
 
-        Sub New(index As Long)
-            Me.Index = index
-            VoiceName = "OPNVOICE"
+        Public Overrides ReadOnly Property InfoString(sep As Char) As String
+            Get
+                Dim sb As New Text.StringBuilder
+                'Dim sep As Char = ","
+                With sb
+                    .AppendLine($"{sep}LFOFreq{sep}FB{sep}CON{sep}AMS")
+                    .AppendLine($"Ch{sep}{ LFOFreq}{sep}{ FB}{sep}{ Con}{sep}{ AMS}{sep}{sep}{sep}{sep}{sep}{sep}{sep}SSG-EG{sep}{sep}{sep}{sep}Ch 3 Special")
+                    .AppendLine($"{sep}DT{sep}Multi{sep}TL{sep}SL{sep}KS{sep}AR{sep}DR{sep}SR{sep}RR{sep}AM{sep}Cnt{sep}Att{sep}Alt{sep}Hld{sep}Block{sep}FNum")
+                    For i As Integer = 0 To 3
+                        .AppendLine($"Op {i}{If(IsCarrier(i), "*", "")}{sep}{ DT(i)}{sep}{ Multi(i)}{sep}{TL(i)}{sep}{ SL(i)}{sep}{ KS(i)}{sep}{ AR(i)}{sep}{ DR(i)}{sep}{ SR(i)}{sep}{ RR(i)}{sep}{ AM(i)}{sep}{ SSG_EG_Cnt(i)}{sep}{ SSG_EG_Att(i)}{sep}{ SSG_EG_Alt(i)}{sep}{ SSG_EG_Hld(i)}{sep}{ Ch3SpBlock(i)}{sep}{ Ch3SpFNum(i)}")
+                    Next
+                End With
+                Return sb.ToString
+            End Get
+        End Property
 
+        Sub New(index As Long)
+            MyBase.New(index)
+
+            VoiceName = "OPNVOICE"
             MasterClockFreq = 0
 
             LFOFreq = 0
@@ -773,21 +791,8 @@ Public Class OPN
         Overloads Shared Operator <>(a As Voice, b As Voice)
             Return Not Equals(a, b)
         End Operator
-        Public Shadows Function ToString(sep As Char) As String
-            Dim sb As New Text.StringBuilder
-            'Dim sep As Char = ","
-            With sb
-                .AppendLine($"{sep}LFOFreq{sep}FB{sep}CON{sep}AMS")
-                .AppendLine($"Ch{sep}{ LFOFreq}{sep}{ FB}{sep}{ Con}{sep}{ AMS}{sep}{sep}{sep}{sep}{sep}{sep}{sep}SSG-EG{sep}{sep}{sep}{sep}Ch 3 Special")
-                .AppendLine($"{sep}DT{sep}Multi{sep}TL{sep}SL{sep}KS{sep}AR{sep}DR{sep}SR{sep}RR{sep}AM{sep}Cnt{sep}Att{sep}Alt{sep}Hld{sep}Block{sep}FNum")
-                For i As Integer = 0 To 3
-                    .AppendLine($"Op {i}{If(IsCarrier(i), "*", "")}{sep}{ DT(i)}{sep}{ Multi(i)}{sep}{TL(i)}{sep}{ SL(i)}{sep}{ KS(i)}{sep}{ AR(i)}{sep}{ DR(i)}{sep}{ SR(i)}{sep}{ RR(i)}{sep}{ AM(i)}{sep}{ SSG_EG_Cnt(i)}{sep}{ SSG_EG_Att(i)}{sep}{ SSG_EG_Alt(i)}{sep}{ SSG_EG_Hld(i)}{sep}{ Ch3SpBlock(i)}{sep}{ Ch3SpFNum(i)}")
-                Next
-            End With
-            Return sb.ToString
-        End Function
 
-    End Structure
+    End Class
 
 #End Region
     Public MustInherit Class Chip
@@ -1272,11 +1277,23 @@ Public Class YM2612
 
 #Region "Structures"
 
-    Public Structure PCMVoice
+    Public Class PCMVoice
         Public ReadOnly Property Index As Long
         Public ReadOnly Property StartAddr As UInteger
         Public ReadOnly Property EndAddr As UInteger
         Public ReadOnly Property Data As Byte()
+        Public ReadOnly Property DataHash As String
+            Get
+                If Data Is Nothing Then
+                    Return String.Empty
+                Else
+                    Dim dataHashBytes As Byte() =
+                        Security.Cryptography.SHA1.HashData(Data)
+                    Return Convert.ToHexString(dataHashBytes)
+                End If
+            End Get
+        End Property
+
         Sub New(Index As Long, startAddr As UInteger, endAddr As UInteger, ByRef pcmdata As Byte())
             _Index = Index
             _StartAddr = startAddr
@@ -1291,7 +1308,7 @@ Public Class YM2612
         End Sub
 
         Public Overrides Function GetHashCode() As Integer
-            Return HashCode.Combine(StartAddr, EndAddr)
+            Return HashCode.Combine(StartAddr, EndAddr, DataHash)
         End Function
 
         Public Overrides Function Equals(obj As Object) As Boolean
@@ -1316,7 +1333,7 @@ Public Class YM2612
             Return Not Equals(a, b)
         End Operator
 
-    End Structure
+    End Class
 
 #End Region
     Public Class Chip

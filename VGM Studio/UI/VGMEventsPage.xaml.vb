@@ -1,5 +1,7 @@
 ﻿Imports System.ComponentModel
+Imports System.DirectoryServices.ActiveDirectory
 Imports System.IO
+Imports System.Runtime.Serialization.Formatters
 Imports System.Threading
 Imports Microsoft.Win32
 Imports VGM_Studio.VGM
@@ -29,25 +31,20 @@ Class VGMEventsPage
 
     Private Sub OnCompleted(sender As Object, e As EventArgs) Handles ViewModel.Completed
         Dispatcher.Invoke(Sub()
-                              MainListBox.ItemsSource = ViewModel.EventListItems
+                              MainListBox.ItemsSource = ViewModel.FilteredEventListItems
 
-                              'Filter wait commands by default
                               Dim view As ICollectionView = CollectionViewSource.GetDefaultView(MainListBox.ItemsSource)
-                              view.Filter = Function(item As EventsPageViewModel.EventListItem) As Boolean
-                                                If TypeOf (item.Command) Is WaitCommand Then
-                                                    Return False
-                                                Else
-                                                    Return True
-                                                End If
+                              view.Filter = AddressOf ViewModel.FilterByCommandType
 
-                                                'If item.chIdx = "1" Then
-                                                '    Return True
-                                                'Else
-                                                '    Return False
-                                                'End If
-                                            End Function
+                              For Each item As EventsPageViewModel.CommandTypeFilterListItem In ViewModel.CommandTypeFilterList
+                                  AddHandler item.PropertyChanged, AddressOf ViewModel.OnCommandTypeFilterListItemPropertyChanged
+                                  item.IsChecked = True
+                              Next
 
                               MainProgressBar.Visibility = Visibility.Collapsed
+
+                              FilterStackPanel.Visibility = Visibility.Visible
+
                               MainListBox.Visibility = Visibility.Visible
 
                               'ExportLabel.Visibility = Visibility.Visible
@@ -57,6 +54,12 @@ Class VGMEventsPage
                               'ExportNoteLengthsButton.Visibility = Visibility.Visible
                               'ExportVoiceListButton.Visibility = Visibility.Visible
                           End Sub)
+    End Sub
+
+    Private Sub ClearFilterButton_Click(sender As Object, e As RoutedEventArgs) Handles ClearFilterButton.Click
+        For Each item As EventsPageViewModel.CommandTypeFilterListItem In ViewModel.CommandTypeFilterList
+            item.IsChecked = True
+        Next
     End Sub
 
     Private Sub ExportButton_Click(sender As Object, e As RoutedEventArgs) 'Handles ExportEventsButton.Click
@@ -498,7 +501,7 @@ Public Class EventsPageViewModel
 
     Public Event PropertyChanged(sender As Object, e As PropertyChangedEventArgs) Implements INotifyPropertyChanged.PropertyChanged
 
-    Public Sub NotifyPropertyChanged(<Runtime.CompilerServices.CallerMemberName> Optional ByVal propertyName As String = Nothing)
+    Public Sub NotifyPropertyChanged(<Runtime.CompilerServices.CallerMemberName> Optional propertyName As String = Nothing)
         RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
     End Sub
 
@@ -564,15 +567,21 @@ Public Class EventsPageViewModel
                     cmd.CommandType
                 Dim str As String
 
-                If TypeOf cmd Is ChipCommand Then
-                    Dim cc As ChipCommand = cmd
-                    With cc
-                        str = $"{ .ChipName} #{ .ChipIndex + 1}"
-                    End With
-                Else
-                    str = cmdType.ToString.Replace("_", " ")
-                End If
+                'If TypeOf cmd Is ChipCommand Then
+                '    Dim cc As ChipCommand = cmd
+                '    With cc
+                '        str = $"{ .ChipName} (Chip { .ChipIndex + 1})"
+                '    End With
+                'Else
+                str = cmdType.ToString.Replace("_", " ")
+                'End If
                 Return str
+            End Get
+        End Property
+
+        Public ReadOnly Property ChipIndex As String
+            Get
+                Return Command.ChipIndex + 1
             End Get
         End Property
 
@@ -581,26 +590,6 @@ Public Class EventsPageViewModel
                 Return Command.Description?.Replace("_", " ")
             End Get
         End Property
-
-        'Public ReadOnly Property chIdx As String
-        '    Get
-        '        If TypeOf (Command) Is ChipCommand Then
-        '            Dim chipCmd As ChipCommand = Command
-        '            Return If(chipCmd.chIdx > -1, chipCmd.chIdx + 1, "")
-        '        End If
-        '        Return ""
-        '    End Get
-        'End Property
-
-        'Public ReadOnly Property opIdx As String
-        '    Get
-        '        If TypeOf (Command) Is ChipCommand Then
-        '            Dim chipCmd As ChipCommand = Command
-        '            Return If(chipCmd.opIdx > -1, chipCmd.opIdx + 1, "")
-        '        End If
-        '        Return ""
-        '    End Get
-        'End Property
 
         Public ReadOnly Property Details As String
             Get
@@ -612,18 +601,101 @@ Public Class EventsPageViewModel
 
     Public EventListItems As New List(Of EventListItem)
 
-    Public NoteGapLengths As New SortedDictionary(Of Long, Long)
+    ' 2026/11/7: Added a filtered view of the event list items to allow filtering by command type
+    Public Sub OnCommandTypeFilterListItemPropertyChanged(sender As Object, e As PropertyChangedEventArgs)
+        If e.PropertyName = "IsChecked" Then
+            Dim item As CommandTypeFilterListItem =
+                sender
+            If item.IsChecked Then
+                If SelectedCommandTypes.Contains(item.CommandType) = False Then
+                    SelectedCommandTypes.Add(item.CommandType) '= SelectedCommandTypes.Concat({item.CommandType}).ToArray
+                End If
+            Else
+                If SelectedCommandTypes.Contains(item.CommandType) Then
+                    SelectedCommandTypes.Remove(item.CommandType) ' = SelectedCommandTypes.Where(Function(x) x <> item.CommandType).ToArray
+                End If
+            End If
+        End If
+        FilteredEventListItems.Refresh()
+    End Sub
 
-    'Public DataBank As Byte()
-    'Public DataBankVoices As New List(Of Exporter.DataBankVoice)
-    'Public YM2612Voices As New List(Of YM2612.Voice)
-    'Public YM2612DACVoices As New List(Of Long)
-    'Public SegaPCMVoices As New List(Of SegaPCM.Voice)
-    'Public SegaPCMVoiceChannels As New List(Of SortedSet(Of Integer))
-    'Public SegaPCMVoiceSpeeds As New List(Of SortedSet(Of Integer))
+    Public Class CommandTypeFilterListItem
+        Implements INotifyPropertyChanged
+
+        Public Event PropertyChanged(sender As Object, e As PropertyChangedEventArgs) Implements INotifyPropertyChanged.PropertyChanged
+
+        Public Sub NotifyPropertyChanged(<Runtime.CompilerServices.CallerMemberName> Optional propertyName As String = Nothing)
+            RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+        End Sub
+
+        Public Property Name As String
+        Public Property CommandType As CommandType
+        Protected _IsChecked As Boolean
+        Public Property IsChecked As Boolean
+            Get
+                Return _IsChecked
+            End Get
+            Set(value As Boolean)
+                _IsChecked = value
+                NotifyPropertyChanged()
+            End Set
+        End Property
+
+        Sub New(cmdType As CommandType, isChecked As Boolean)
+            Me.Name = cmdType.ToString.Replace("_", " ")
+            Me.CommandType = cmdType
+            Me.IsChecked = isChecked
+        End Sub
+    End Class
+
+    Protected _CommandTypeFilterList As New List(Of CommandTypeFilterListItem)
+    Public Property CommandTypeFilterList As List(Of CommandTypeFilterListItem)
+        Get
+            Return _CommandTypeFilterList
+        End Get
+        Set(value As List(Of CommandTypeFilterListItem))
+            _CommandTypeFilterList = value
+            NotifyPropertyChanged()
+        End Set
+    End Property
+
+    Protected _SeletedCommandTypes As New List(Of CommandType)
+    Public Property SelectedCommandTypes As List(Of CommandType)
+        Get
+            Return _SeletedCommandTypes
+        End Get
+        Set(value As List(Of CommandType))
+            _SeletedCommandTypes = value
+            NotifyPropertyChanged()
+            FilteredEventListItems.Refresh()
+        End Set
+    End Property
+
+    Public FilteredEventListItems As ICollectionView =
+        CollectionViewSource.GetDefaultView(EventListItems)
+
+    Public Function FilterByCommandType(item As EventListItem) As Boolean
+        'Filter wait commands by default
+        If TypeOf (item.Command) Is WaitCommand Then
+            Return False
+        Else
+            If SelectedCommandTypes.Count = 0 Then
+                Return True
+            Else
+                If SelectedCommandTypes.Contains(item.Command.CommandType) Then
+                    Return True
+                End If
+                Return False
+            End If
+        End If
+    End Function
+
+    Public NoteGapLengths As New SortedDictionary(Of Long, Long)
 
     Public Sub New(fileName As String)
         _VGMFile = New VGMFile(fileName)
+
+        FilteredEventListItems.Filter = AddressOf FilterByCommandType
     End Sub
 
     Public Property TokenSource As New CancellationTokenSource
@@ -660,6 +732,21 @@ Public Class EventsPageViewModel
 
                                        EventListItems.Add(New EventListItem(cmd))
 
+                                       'Create a list of command types for filtering
+                                       'Don't add wait or end of sound data commands to the list
+                                       If TypeOf (cmd) IsNot WaitCommand AndAlso TypeOf (cmd) IsNot EndOfSoundDataCommand Then
+                                           Dim add As Boolean = True
+                                           For Each item As CommandTypeFilterListItem In CommandTypeFilterList
+                                               If item.CommandType = cmd.CommandType Then
+                                                   add = False
+                                                   Exit For
+                                               End If
+                                           Next
+                                           If add Then
+                                               CommandTypeFilterList.Add(New CommandTypeFilterListItem(cmd.CommandType, True))
+                                           End If
+                                       End If
+
                                        progVal += 1
 
                                        If (progVal Mod progInc) = 0 Then
@@ -673,13 +760,6 @@ Public Class EventsPageViewModel
                                        For Each key As Long In .NoteGapLengths.Keys
                                            NoteGapLengths.Add(key, .NoteGapLengths(key))
                                        Next
-
-                                       'DataBank = .DataBank.ToArray
-                                       'DataBankVoices.AddRange(.DataBankVoices)
-                                       'YM2612Voices.AddRange(.YM2612Voices)
-                                       'SegaPCMVoices.AddRange(.SegaPCMVoices)
-                                       'SegaPCMVoiceChannels.AddRange(.SegaPCMVoiceChannels)
-                                       'SegaPCMVoiceSpeeds.AddRange(.SegaPCMVoiceSpeeds)
                                    End With
 
                                    RaiseEvent Completed(Me, New EventArgs)

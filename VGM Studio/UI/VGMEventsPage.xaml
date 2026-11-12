@@ -12,7 +12,19 @@
         <DockPanel LastChildFill="True">
             <Label Content="Events" FontWeight="Bold" FontSize="18" DockPanel.Dock="Top"/>
 
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+            <StackPanel Name="FilterStackPanel" DockPanel.Dock="Top" Orientation="Horizontal">
+                <Label Content="Filter by Command Type:" Margin="20,0,0,0" VerticalAlignment="Center" FontSize="14" Visibility="Visible" d:Visibility="Visible"/>
+                <ComboBox Name="CommandTypeFilterComboBox" Width="Auto" Height="Auto" Margin="5,5,0,5" VerticalAlignment="Bottom" Visibility="Visible" d:Visibility="Visible" ItemsSource="{Binding CommandTypeFilterList}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Name}" 
+                              IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                              VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Name="ClearFilterButton" Width="Auto" Height="Auto" Margin="5,5,0,5" VerticalAlignment="Bottom" Content="❌" Visibility="Visible" d:Visibility="Visible"/>
+
                 <!--<Label Content="Export" Name="ExportLabel" Margin="20,0,0,0" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Visibility="Collapsed"/>-->
                 <!--<Button Name="ExportEventsButton" Width="Auto" Height="Auto" Margin="5,5,0,5" VerticalAlignment="Bottom" Content="_Events" Visibility="Collapsed"/>-->
                 <!--<Button Name="ExportDataBlocksButton" Width="Auto" Height="Auto" Margin="5,5,0,5" VerticalAlignment="Bottom" Content="_Data Blocks" Visibility="Collapsed"/>-->
@@ -22,12 +34,13 @@
                 <!--<Button Name="ExportPCMTracksButton" Width="Auto" Height="Auto" Margin="5,5,0,5" VerticalAlignment="Bottom" Content="_PCM Tracks" Visibility="Collapsed"/>-->
             </StackPanel>
             <ProgressBar Name="MainProgressBar" DockPanel.Dock="Top" Height="20" Margin="10,0,10,0" Minimum="0" Maximum="1" Value="{Binding ProgressValue}" Visibility="Visible"/>
-            <ListView Name="MainListBox" DockPanel.Dock="Bottom" ItemsSource="{Binding Source=EventListItems}" Visibility="Collapsed">
+            <ListView Name="MainListBox" DockPanel.Dock="Bottom" ItemsSource="{Binding Source=FilteredEventListItems}" Visibility="Collapsed">
                 <ListView.View>
                     <GridView AllowsColumnReorder="False">
                         <GridViewColumn DisplayMemberBinding="{Binding Path=Offset}" Header="Offset" Width="Auto"/>
                         <GridViewColumn DisplayMemberBinding="{Binding Path=Timecode}" Header="Timecode" Width="Auto"/>
                         <GridViewColumn DisplayMemberBinding="{Binding Path=Type}" Header="Type" Width="Auto"/>
+                        <GridViewColumn DisplayMemberBinding="{Binding Path=ChipIndex}" Header="#" Width="Auto"/>
                         <GridViewColumn DisplayMemberBinding="{Binding Path=Description}" Header="Description" Width="Auto"/>
                         <!--<GridViewColumn DisplayMemberBinding="{Binding Path=chIdx}" Header="Ch" Width="Auto"/>
                         <GridViewColumn DisplayMemberBinding="{Binding Path=opIdx}" Header="Op" Width="Auto"/>-->

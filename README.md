@@ -27,7 +27,7 @@ Version 0.9 (Nov 3, 2026)
   - PSG: TI SN76489 (MIDI export; WAV export via internal emulator or Nuked-PSG)
   - SSG: YM2149 (MIDI export)
   - SegaPCM (WIP MIDI export; WAV export via internal emulator)
-  - Ricoh RFC5164 (WIP MIDI support; WAV export via internal emulator)
+  - Ricoh RF5C164 (WIP MIDI support; WAV export via internal emulator)
 - Planned features:
   - Support for the full VGM 1.72 spec
   - PCM voice export

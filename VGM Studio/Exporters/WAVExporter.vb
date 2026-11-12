@@ -66,6 +66,11 @@ Public Class WAVExporter
                 Nuked.OPN2.SetChipType(Nuked.OPN2.ChipMode.ym2612)
                 Nuked.OPN2.Reset(NukedOPN2ChipState, extSampleClockFreq, vgmfile.YM2612Clock)
                 Nuked.OPN2.SetFilter(NukedOPN2ChipState, 5894.6)
+                If vgmfile.IsDualYM2612 Then
+                    NukedOPN2ChipState2 = New Nuked.OPN2.ChipState
+                    Nuked.OPN2.Reset(NukedOPN2ChipState2, extSampleClockFreq, vgmfile.YM2612Clock)
+                    Nuked.OPN2.SetFilter(NukedOPN2ChipState2, 5894.6)
+                End If
             End If
 
             If vgmfile.YM2203Clock <> 0 Then
@@ -87,9 +92,17 @@ Public Class WAVExporter
             Nuked.OPM.SetFilter(NukedOPMChipState, 5894.6)
         End If
 
-        RFC5164Chip?.Reset()
+        If vgmfile.RF5C68Clock <> 0 Then
+            RF5C68Chip?.Reset()
+        End If
 
-        SegaPCMChip?.Reset()
+        If vgmfile.RF5C164Clock <> 0 Then
+            RF5C164Chip?.Reset()
+        End If
+
+        If vgmfile.SegaPCMClock <> 0 Then
+            SegaPCMChip?.Reset()
+        End If
 
     End Sub
 
@@ -147,8 +160,13 @@ Public Class WAVExporter
         Dim value As Byte = cmd.Value(1)
 
         If Options.OPNEmu = OPNEmu.NukedOPN2 Then
-            Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, (port * 2), cmd.Value(0))
-            Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, (port * 2) + 1, cmd.Value(1))
+            Dim chip As Nuked.OPN2.ChipState =
+                If(cmd.ChipIndex = 0, NukedOPN2ChipState, NukedOPN2ChipState2)
+            Nuked.OPN2.WriteBuffered(chip, port * 2, cmd.Value(0))
+            Nuked.OPN2.WriteBuffered(chip, (port * 2) + 1, cmd.Value(1))
+
+            'Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, (port * 2), cmd.Value(0))
+            'Nuked.OPN2.WriteBuffered(NukedOPN2ChipState, (port * 2) + 1, cmd.Value(1))
         Else
             YM2612Chip?.Write(port, addr, value)
         End If
@@ -249,16 +267,9 @@ Public Class WAVExporter
             If YM2612Chip IsNot Nothing OrElse YM2203Chip IsNot Nothing Then
 
                 If Options.OPNEmu = OPNEmu.NukedOPN2 Then
-                    'Dim ym3438samples(sampleCount - 1, 1) As Integer
-                    'Nuked.OPN2.GenerateStream(NukedOPN2ChipState, ym3438samples, sampleCount)
-                    'For curSample As Integer = 0 To ym3438samples.GetUpperBound(0)
-                    '    For spkIdx As Integer = 0 To 1
-                    '        samples(curSample, spkIdx) += ym3438samples(curSample, spkIdx) / If(YM2203Chip IsNot Nothing, 32767, 16383)
-                    '    Next
-                    'Next
 
                     Dim dual As Boolean =
-                        VGMFile.IsDualYM2203
+                        VGMFile.IsDualYM2612 OrElse VGMFile.IsDualYM2203
                     Dim idx As Integer = 0
                     Dim chip As Nuked.OPN2.ChipState
                     Do
@@ -300,12 +311,22 @@ Public Class WAVExporter
 
             End If
 
-            If RFC5164Chip IsNot Nothing Then
-                Dim rfc5164samples(sampleCount - 1, 1) As Single
-                RFC5164Chip?.GenerateSamples(rfc5164samples)
-                For curSample As Integer = 0 To rfc5164samples.GetUpperBound(0)
+            If RF5C68Chip IsNot Nothing Then
+                Dim rf5cSamples(sampleCount - 1, 1) As Single
+                RF5C68Chip?.GenerateSamples(rf5cSamples)
+                For curSample As Integer = 0 To rf5cSamples.GetUpperBound(0)
                     For i As Integer = 0 To 1
-                        samples(curSample, i) += rfc5164samples(curSample, i)
+                        samples(curSample, i) += rf5cSamples(curSample, i)
+                    Next
+                Next
+            End If
+
+            If RF5C164Chip IsNot Nothing Then
+                Dim rf5cSamples(sampleCount - 1, 1) As Single
+                RF5C164Chip?.GenerateSamples(rf5cSamples)
+                For curSample As Integer = 0 To rf5cSamples.GetUpperBound(0)
+                    For i As Integer = 0 To 1
+                        samples(curSample, i) += rf5cSamples(curSample, i)
                     Next
                 Next
             End If

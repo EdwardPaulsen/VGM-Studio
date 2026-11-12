@@ -29,13 +29,120 @@ Public Class OPM
 #End Region
 
 #Region "Shared Methods"
-    Shared Function GetFNote(note As NoteValue, octave As Integer, frac As Integer, mul As Integer, masterClockFreq As Single) As Single
+
+    Const PhaseIncMax As UInteger = (1 << 20) - 1
+    Shared Function GetFNote(kc As Integer, kf As Integer, pm As Integer, dt1 As Integer, dt2 As Integer, mul As Integer, sampleClockFreq As Single) As Single
+        Dim phaseInc As Integer =
+            GetPhaseInc(kc, kf, pm, dt1, dt2, mul)
+        Return sampleClockFreq * (phaseInc / PhaseIncMax)
+    End Function
+
+    Shared Function GetPhaseInc(kc As Integer, kf As Integer, pm As Integer, dt1 As Integer, dt2 As Integer, mul As Integer) As UInteger
+        'Get basic increment
+        Dim oct As Integer =
+            (kc >> 4) And &H7
+        Dim note As Integer =
+            kc And &HF
+        Dim semi As Integer =
+            note - (note >> 2)  'Collapse 0..14 to 0..11 (skip input values 3, 7, 11, and 15) 
+        Dim inc As Integer =
+            (oct * 768) + (semi * 64) + (kf And &H3F)
+
+        'Add phase modulation
+        'NOT IMPLEMENTED YET
+
+        'Apply DT2 (Coarse Detune)
+        dt2 = Math.Min(dt2, 3)
+        inc += DT2ToPMTable(dt2)
+
+        'Calculate lookup index and retrieve from table
+        inc = Math.Clamp(inc, 0, 6143)
+        oct = inc \ 768
+        Dim fnumIdx As Integer =
+            inc Mod 768
+        inc = FNumTable(fnumIdx)
+        inc = (inc << oct) >> 1
+
+        'Apply DT1 (fine detune)
+        Dim kcPrime As UInteger =
+            kc And (RegDataMask.KeyCodePrime) >> 2
+        Dim dtIdx As UInteger =
+            dt1 And &B_0011
+        Dim dtMag As Integer =
+            DT1ToPMTable(kcPrime, dtIdx)
+        Dim dtSign As Boolean =
+            (dt1 And &B_0100) <> 0
+        If dtSign Then
+            dtMag = -dtMag
+        End If
+        inc += dtMag
+
+        'Apply Multi
+        inc *= If(mul = 0, 0.5, mul)
+
+        Return inc
+    End Function
+
+    Shared ReadOnly FNumTable As UShort() = { 'Values calculated as Math.Round(2048 * Math.Pow(i / 768))
+        2048, 2050, 2052, 2054, 2055, 2057, 2059, 2061, 2063, 2065, 2067, 2068, 2070, 2072, 2074, 2076,
+        2078, 2080, 2081, 2083, 2085, 2087, 2089, 2091, 2093, 2095, 2097, 2098, 2100, 2102, 2104, 2106,
+        2108, 2110, 2112, 2114, 2116, 2117, 2119, 2121, 2123, 2125, 2127, 2129, 2131, 2133, 2135, 2137,
+        2139, 2141, 2142, 2144, 2146, 2148, 2150, 2152, 2154, 2156, 2158, 2160, 2162, 2164, 2166, 2168,
+        2170, 2172, 2174, 2176, 2178, 2180, 2182, 2184, 2185, 2187, 2189, 2191, 2193, 2195, 2197, 2199,
+        2201, 2203, 2205, 2207, 2209, 2211, 2213, 2215, 2217, 2219, 2221, 2223, 2225, 2227, 2229, 2231,
+        2233, 2235, 2237, 2239, 2241, 2243, 2245, 2248, 2250, 2252, 2254, 2256, 2258, 2260, 2262, 2264,
+        2266, 2268, 2270, 2272, 2274, 2276, 2278, 2280, 2282, 2284, 2286, 2288, 2291, 2293, 2295, 2297,
+        2299, 2301, 2303, 2305, 2307, 2309, 2311, 2313, 2315, 2318, 2320, 2322, 2324, 2326, 2328, 2330,
+        2332, 2334, 2336, 2339, 2341, 2343, 2345, 2347, 2349, 2351, 2353, 2355, 2358, 2360, 2362, 2364,
+        2366, 2368, 2370, 2373, 2375, 2377, 2379, 2381, 2383, 2385, 2388, 2390, 2392, 2394, 2396, 2398,
+        2401, 2403, 2405, 2407, 2409, 2411, 2414, 2416, 2418, 2420, 2422, 2425, 2427, 2429, 2431, 2433,
+        2435, 2438, 2440, 2442, 2444, 2447, 2449, 2451, 2453, 2455, 2458, 2460, 2462, 2464, 2467, 2469,
+        2471, 2473, 2475, 2478, 2480, 2482, 2484, 2487, 2489, 2491, 2493, 2496, 2498, 2500, 2502, 2505,
+        2507, 2509, 2512, 2514, 2516, 2518, 2521, 2523, 2525, 2527, 2530, 2532, 2534, 2537, 2539, 2541,
+        2544, 2546, 2548, 2550, 2553, 2555, 2557, 2560, 2562, 2564, 2567, 2569, 2571, 2574, 2576, 2578,
+        2581, 2583, 2585, 2588, 2590, 2592, 2595, 2597, 2599, 2602, 2604, 2607, 2609, 2611, 2614, 2616,
+        2618, 2621, 2623, 2625, 2628, 2630, 2633, 2635, 2637, 2640, 2642, 2645, 2647, 2649, 2652, 2654,
+        2657, 2659, 2661, 2664, 2666, 2669, 2671, 2673, 2676, 2678, 2681, 2683, 2686, 2688, 2690, 2693,
+        2695, 2698, 2700, 2703, 2705, 2707, 2710, 2712, 2715, 2717, 2720, 2722, 2725, 2727, 2730, 2732,
+        2735, 2737, 2740, 2742, 2745, 2747, 2749, 2752, 2754, 2757, 2759, 2762, 2764, 2767, 2769, 2772,
+        2774, 2777, 2780, 2782, 2785, 2787, 2790, 2792, 2795, 2797, 2800, 2802, 2805, 2807, 2810, 2812,
+        2815, 2818, 2820, 2823, 2825, 2828, 2830, 2833, 2835, 2838, 2841, 2843, 2846, 2848, 2851, 2853,
+        2856, 2859, 2861, 2864, 2866, 2869, 2872, 2874, 2877, 2879, 2882, 2885, 2887, 2890, 2893, 2895,
+        2898, 2900, 2903, 2906, 2908, 2911, 2914, 2916, 2919, 2922, 2924, 2927, 2930, 2932, 2935, 2938,
+        2940, 2943, 2946, 2948, 2951, 2954, 2956, 2959, 2962, 2964, 2967, 2970, 2972, 2975, 2978, 2980,
+        2983, 2986, 2989, 2991, 2994, 2997, 2999, 3002, 3005, 3008, 3010, 3013, 3016, 3019, 3021, 3024,
+        3027, 3030, 3032, 3035, 3038, 3041, 3043, 3046, 3049, 3052, 3054, 3057, 3060, 3063, 3065, 3068,
+        3071, 3074, 3077, 3079, 3082, 3085, 3088, 3091, 3093, 3096, 3099, 3102, 3105, 3107, 3110, 3113,
+        3116, 3119, 3122, 3124, 3127, 3130, 3133, 3136, 3139, 3141, 3144, 3147, 3150, 3153, 3156, 3159,
+        3161, 3164, 3167, 3170, 3173, 3176, 3179, 3182, 3184, 3187, 3190, 3193, 3196, 3199, 3202, 3205,
+        3208, 3211, 3213, 3216, 3219, 3222, 3225, 3228, 3231, 3234, 3237, 3240, 3243, 3246, 3249, 3252,
+        3254, 3257, 3260, 3263, 3266, 3269, 3272, 3275, 3278, 3281, 3284, 3287, 3290, 3293, 3296, 3299,
+        3302, 3305, 3308, 3311, 3314, 3317, 3320, 3323, 3326, 3329, 3332, 3335, 3338, 3341, 3344, 3347,
+        3350, 3353, 3356, 3359, 3362, 3365, 3368, 3371, 3374, 3377, 3380, 3383, 3386, 3390, 3393, 3396,
+        3399, 3402, 3405, 3408, 3411, 3414, 3417, 3420, 3423, 3426, 3430, 3433, 3436, 3439, 3442, 3445,
+        3448, 3451, 3454, 3458, 3461, 3464, 3467, 3470, 3473, 3476, 3480, 3483, 3486, 3489, 3492, 3495,
+        3499, 3502, 3505, 3508, 3511, 3514, 3518, 3521, 3524, 3527, 3530, 3534, 3537, 3540, 3543, 3546,
+        3550, 3553, 3556, 3559, 3562, 3566, 3569, 3572, 3575, 3579, 3582, 3585, 3588, 3592, 3595, 3598,
+        3601, 3605, 3608, 3611, 3615, 3618, 3621, 3624, 3628, 3631, 3634, 3638, 3641, 3644, 3647, 3651,
+        3654, 3657, 3661, 3664, 3667, 3671, 3674, 3677, 3681, 3684, 3687, 3691, 3694, 3697, 3701, 3704,
+        3707, 3711, 3714, 3718, 3721, 3724, 3728, 3731, 3734, 3738, 3741, 3745, 3748, 3751, 3755, 3758,
+        3762, 3765, 3768, 3772, 3775, 3779, 3782, 3785, 3789, 3792, 3796, 3799, 3803, 3806, 3809, 3813,
+        3816, 3820, 3823, 3827, 3830, 3834, 3837, 3841, 3844, 3848, 3851, 3854, 3858, 3861, 3865, 3868,
+        3872, 3875, 3879, 3882, 3886, 3889, 3893, 3897, 3900, 3904, 3907, 3911, 3914, 3918, 3921, 3925,
+        3928, 3932, 3935, 3939, 3943, 3946, 3950, 3953, 3957, 3960, 3964, 3968, 3971, 3975, 3978, 3982,
+        3986, 3989, 3993, 3996, 4000, 4004, 4007, 4011, 4015, 4018, 4022, 4025, 4029, 4033, 4036, 4040,
+        4044, 4047, 4051, 4055, 4058, 4062, 4066, 4069, 4073, 4077, 4080, 4084, 4088, 4092, 4095, 4099
+    }
+
+    Shared Function GetFNote(note As NoteValue, oct As Integer, frac As Integer, kcPrime As Integer, dt1 As Integer, dt2 As Integer, mul As Integer, masterClockFreq As Single) As Single
         'Adjust master tuning frequency
+        'Dim hz As Single =
+        '    440 * (masterClockFreq / 3579545)
         Dim hz As Single =
-            440 * (masterClockFreq / 3579545)
+            27.5 * (masterClockFreq / 3579545)
 
         'Calculate difference from standard frequency
-        Dim diff As Single = 0
+        Dim diff As Single
 
         Select Case note
             Case NoteValue.Csharp
@@ -69,12 +176,51 @@ Public Class OPM
         'Add normalized fractional note
         diff += CSng(frac) / 63
 
-        'Calculate final note
+        'Calculate note
         hz *= Math.Pow(2, diff / 12)
-        hz *= Math.Pow(2, octave - 4)
+        'hz *= Math.Pow(2, oct - 4)
+        hz *= Math.Pow(2, oct)
+
+        'Apply DT2 (coarse detune)
+        hz *= GetDT2Multiplier(dt2)
+
+        'Apply DT1 (coarse detune)
+        hz *= GetDT1Multiplier(kcPrime, dt1)
+
+        'Apply phase multiple
         hz *= If(mul = 0, 0.5, mul)
 
         Return hz
+    End Function
+
+    Shared ReadOnly DT2ToPMTable As Single() =
+        {0, 384, 500, 608}
+    Shared ReadOnly DT2ToCentTable As Single() =
+        {0, 600, 781, 950}
+    Shared ReadOnly DT2ToMultiplierTable As Single() =
+        {1, Math.Sqrt(2), Math.PI / 2, Math.Sqrt(3)}
+    Shared Function GetDT2Multiplier(dt2 As Byte) As Single
+        dt2 = Math.Min(dt2, DT2ToMultiplierTable.GetUpperBound(0))
+        Return DT2ToMultiplierTable(dt2)
+    End Function
+
+    Public Shared ReadOnly DT1ToPMTable As Byte(,) = {
+        {0, 0, 1, 2}, {0, 0, 1, 2}, {0, 0, 1, 2}, {0, 0, 1, 2},  'Octave 0
+        {0, 1, 2, 2}, {0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3},  'Octave 1
+        {0, 1, 2, 4}, {0, 1, 3, 4}, {0, 1, 3, 4}, {0, 1, 3, 5},  'Octave 2
+        {0, 2, 4, 5}, {0, 2, 4, 6}, {0, 2, 4, 6}, {0, 2, 5, 7},  'Octave 3
+        {0, 2, 5, 8}, {0, 3, 6, 8}, {0, 3, 6, 9}, {0, 3, 7, 10},  'Octave 4
+        {0, 4, 8, 11}, {0, 4, 8, 12}, {0, 4, 9, 13}, {0, 5, 10, 14},  'Octave 5
+        {0, 5, 11, 16}, {0, 6, 12, 17}, {0, 6, 13, 19}, {0, 7, 14, 20},  'Octave 6
+        {0, 8, 16, 22}, {0, 8, 16, 22}, {0, 8, 16, 22}, {0, 8, 16, 22}  'Octave 7
+    }
+    Shared Function GetDT1Multiplier(kcPrime As Integer, dt1 As Integer) As Single
+        dt1 = Math.Min(dt1, DT1ToPMTable.GetUpperBound(1))
+        Dim dt1pm As Integer =
+            DT1ToPMTable(kcPrime, dt1)
+        Dim oct As Integer =
+            (kcPrime And &B_11100) >> 2
+        Return 1 + 1 / (1024 * Math.Pow(2, oct))
     End Function
 
     Shared Function GetAttenIndB(tl As Byte) As Single
@@ -95,7 +241,6 @@ Public Class OPM
 
         Return atten
     End Function
-
 
 #End Region
 
@@ -173,7 +318,7 @@ Public Class OPM
         Con = &B_00000111
 
         KeyCode = &B_01111111
-        KeyCodePrime = &B_00011111
+        KeyCodePrime = &B_01111100
         Octave = &B_01110000
         Note = &B_00001111
 
@@ -238,7 +383,6 @@ Public Class OPM
     End Enum
 
     Public Enum NoteValue As Integer
-        ''This is different from the apparently incorrect official documentation
         Csharp = 0
         D = 1
         Dsharp = 2
@@ -407,7 +551,9 @@ Public Class OPM
 
     End Class
 
-    Public Structure Voice
+    Public Class Voice
+        Inherits FM.Voice
+
         Public ReadOnly Index As Long
 
         Private _VoiceName As String
@@ -455,8 +601,24 @@ Public Class OPM
         Public RR As UInteger()
         Public AMSEn As Boolean()
 
+        Public Overrides ReadOnly Property InfoString(sep As Char) As String
+            Get
+                Dim sb As New Text.StringBuilder
+                With sb
+                    .AppendLine($"{sep}LFO{sep}Waveform{sep}FL{sep}CON{sep}AMS{sep}PMS")
+                    .AppendLine($"Ch{sep}{LFOFreq}{sep}{Waveform}{sep}{FL}{sep}{Con}{sep}{AMS}{sep}{PMS}")
+                    .AppendLine($"{sep}DT1{sep}DT2{sep}Mul{sep}TL{sep}SL{sep}KS{sep}AR{sep}DR{sep}SR{sep}RR{sep}AMSEn")
+                    For i As Integer = 0 To 3
+                        .AppendLine($"Op {i}{If(IsCarrier(i), "*", "")}{sep}{DT1(i)}{sep}{DT2(i)}{sep}{Mul(i)}{sep}{TL(i)}{sep}{SL(i)}{sep}{KS(i)}{sep}{AR(i)}{sep}{DR(i)}{sep}{SR(i)}{sep}{RR(i)}{sep}{AMSEn(i)}")
+                    Next
+                End With
+                Return sb.ToString
+            End Get
+        End Property
+
         Sub New(index As Long)
-            Me.Index = index
+            MyBase.New(index)
+
             VoiceName = "OPMVOICE"
 
             MasterClockFreq = 0
@@ -578,20 +740,8 @@ Public Class OPM
         Overloads Shared Operator <>(a As Voice, b As Voice)
             Return Not Equals(a, b)
         End Operator
-        Public Shadows Function ToString(sep As Char) As String
-            Dim sb As New Text.StringBuilder
-            With sb
-                .AppendLine($"{sep}LFO{sep}Waveform{sep}FL{sep}CON{sep}AMS{sep}PMS")
-                .AppendLine($"Ch{sep}{LFOFreq}{sep}{Waveform}{sep}{FL}{sep}{Con}{sep}{AMS}{sep}{PMS}")
-                .AppendLine($"{sep}DT1{sep}DT2{sep}Mul{sep}TL{sep}SL{sep}KS{sep}AR{sep}DR{sep}SR{sep}RR{sep}AMSEn")
-                For i As Integer = 0 To 3
-                    .AppendLine($"Op {i}{If(IsCarrier(i), "*", "")}{sep}{DT1(i)}{sep}{DT2(i)}{sep}{Mul(i)}{sep}{TL(i)}{sep}{SL(i)}{sep}{KS(i)}{sep}{AR(i)}{sep}{DR(i)}{sep}{SR(i)}{sep}{RR(i)}{sep}{AMSEn(i)}")
-                Next
-            End With
-            Return sb.ToString
-        End Function
 
-    End Structure
+    End Class
 
 
 #End Region
@@ -799,7 +949,7 @@ Public Class OPM
                             RaiseEvent RLFLConChanged(ch)
                         Case RegAddr.KeyCode
                             .KeyCode = value And RegDataMask.KeyCode
-                            .KeyCodePrime = value And RegDataMask.KeyCodePrime
+                            .KeyCodePrime = (value And RegDataMask.KeyCodePrime) >> 2
                             .Octave = (value And RegDataMask.Octave) >> 4
                             .Note = value And RegDataMask.Note
                             RaiseEvent KeyCodeChanged(ch)
