@@ -1053,8 +1053,7 @@ End Class
 
 Public Class YM2151
 
-    Public Class Chip
-        Inherits OPM.Chip
+    Public Class Chip : Inherits OPM.Chip
 
         Public Overrides ReadOnly Property ChipType As ChipType = ChipType.YM2151
 

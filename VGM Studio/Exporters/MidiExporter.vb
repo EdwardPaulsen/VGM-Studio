@@ -21,10 +21,13 @@ Public Class MidiExporter
     Inherits Exporter
 
     Private MidiSequence As Sequence
+
+    Private TempoTrack As Track
+
     Private MidiTrack As Track
 
     'Added 2021/02/12: Full SegaPCM Midi Output
-    Private SegaPCMMidiSequence As Sequence
+    'Private SegaPCMMidiSequence As Sequence
     Private SegaPCMMidiTrack As Track
 
     Public Overloads Property Options As MidiExportOptions
@@ -53,7 +56,7 @@ Public Class MidiExporter
 
     Private ReadOnly Property SamplesPerTick As Single
 
-    Sub New(ByRef vgmFile As VGM.VGMFile, options As MidiExportOptions)
+    Sub New(ByRef vgmFile As VGMFile, options As MidiExportOptions)
         MyBase.New(vgmFile, options)
 
         _Options = options
@@ -74,12 +77,19 @@ Public Class MidiExporter
 
     Protected Overrides Sub Start()
         MidiSequence = New Sequence
-        MidiTrack = New Track(MidiSequence)
 
-        With MidiTrack
+        MidiSequence.AddTrack("Tempo", New Track)
+        TempoTrack = MidiSequence.Tracks("Tempo")
+
+        MidiSequence.AddTrack("Main", New Track)
+        MidiTrack = MidiSequence.Tracks("Main")
+
+        With TempoTrack
             .AddSetTempoEvent(Options.Tempo)
             .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
+        End With
 
+        With MidiTrack
             'Set up channels 1–9 for FM
             For chIdx As Integer = 0 To 8
                 With .Channel(chIdx)
@@ -119,15 +129,58 @@ Public Class MidiExporter
 
         End With
 
+        'With MidiTrack
+        '    .AddSetTempoEvent(Options.Tempo)
+        '    .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
+
+        '    'Set up channels 1–9 for FM
+        '    For chIdx As Integer = 0 To 8
+        '        With .Channel(chIdx)
+        '            .ChangeProgram(ProgramValue.Lead8BassLead) 'Bass & Lead is a good all-rounder
+        '            .ChangeVolume(Options.Volume)
+        '        End With
+        '    Next
+
+        '    'Set up channel 10 for percussion
+        '    With .Channel(9)
+        '        .ChangeVolume(Options.Volume)
+        '    End With
+
+        '    'Set up channels 11–13 to square waves for PSG and SSG tones
+        '    For chIdx As Integer = 10 To 12
+        '        With .Channel(chIdx)
+        '            .ChangeProgram(ProgramValue.Lead1Square)
+        '            .ChangeVolume(0)
+        '        End With
+        '    Next
+
+        '    'Set panning for PSG channels for better stereo separation
+        '    'Tones
+        '    .Channel(10).ChangePan(ControllerValue.PanLeft75Right25)
+        '    .Channel(11).ChangePan(ControllerValue.PanCenter)
+        '    .Channel(12).ChangePan(ControllerValue.PanLeft25Right75)
+
+        '    'Noise
+        '    .Channel(13).ChangePan(ControllerValue.PanCenter)
+
+        '    'Set pitch bend range for all channels
+        '    For chIdx As Integer = 0 To MidiTrack.Channel.GetUpperBound(0)
+        '        With .Channel(chIdx)
+        '            .ChangePitchBendRange(Options.PitchBendRange, 0)
+        '        End With
+        '    Next
+
+        'End With
+
         'Added 2021/02/12: Full SegaPCM Midi Output
         If SegaPCMChip IsNot Nothing Then
-            SegaPCMMidiSequence = New Sequence
-            SegaPCMMidiTrack = New Track(MidiSequence)
+            MidiSequence.AddTrack("SegaPCM", New Track)
+            SegaPCMMidiTrack = MidiSequence.Tracks("SegaPCM")
 
-            With SegaPCMMidiTrack
-                .AddSetTempoEvent(Options.Tempo)
-                .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
-            End With
+            'With SegaPCMMidiTrack
+            '    .AddSetTempoEvent(Options.Tempo)
+            '    .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
+            'End With
         End If
 
     End Sub
@@ -162,16 +215,24 @@ Public Class MidiExporter
 
         End Select
 
-        Dim mf As New MidiFormat0File(MidiTrack, td)
+        Dim mf As New MidiFormat1File(td)
+        With mf
+            For Each kvp As KeyValuePair(Of String, Track) In MidiSequence.Tracks
+                .Tracks.Add(kvp.Value)
+            Next
+        End With
         mf.Save(fileName)
 
-        'Added 2021/02/12: Full SegaPCM Midi Output
-        If SegaPCMChip IsNot Nothing Then
-            Dim spcmMf As New MidiFormat0File(SegaPCMMidiTrack, td)
-            With spcmMf
-                .Save(fileName.Replace(".mid", " SegaPCM.mid"))
-            End With
-        End If
+        'Dim mf As New MidiFormat0File(MidiTrack, td)
+        'mf.Save(fileName)
+
+        ''Added 2021/02/12: Full SegaPCM Midi Output
+        'If SegaPCMChip IsNot Nothing Then
+        '    Dim spcmMf As New MidiFormat0File(SegaPCMMidiTrack, td)
+        '    With spcmMf
+        '        .Save(fileName.Replace(".mid", " SegaPCM.mid"))
+        '    End With
+        'End If
 
     End Sub
 
@@ -188,17 +249,29 @@ Public Class MidiExporter
             Math.Floor(ticks)
 
         If wholeTicks > 0 Then
-            MidiTrack.Tick(wholeTicks)
+            MidiSequence.Tick(wholeTicks)
 
             'Added 2021/02/12: Full SegaPCM Midi Output
             If SegaPCMChip IsNot Nothing Then
-                SegaPCMMidiTrack.Tick(wholeTicks)
+                'SegaPCMMidiTrack.Tick(wholeTicks)
 
                 For curSample As Integer = 0 To sampleCount
                     SegaPCMChip.Advance()
                 Next
 
             End If
+
+            'MidiTrack.Tick(wholeTicks)
+
+            ''Added 2021/02/12: Full SegaPCM Midi Output
+            'If SegaPCMChip IsNot Nothing Then
+            '    SegaPCMMidiTrack.Tick(wholeTicks)
+
+            '    For curSample As Integer = 0 To sampleCount
+            '        SegaPCMChip.Advance()
+            '    Next
+
+            'End If
 
             ticks -= wholeTicks
         End If
@@ -1159,7 +1232,7 @@ Public Class MidiExporter
         Public SegaPCMVoiceKey(15) As Integer
     End Class
 
-    Protected thisSegaPCMStatus As SegaPCMStatus
+    Protected thisSegaPCMStatus As New SegaPCMStatus
 
     Protected Overrides Sub SegaPCMChip_VolLChanged(ByRef ch As SegaPCM.Channel)
         SegaPCMChip_VolChanged(ch)

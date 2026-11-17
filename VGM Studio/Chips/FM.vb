@@ -8,7 +8,7 @@
                 Return _Index
             End Get
             Protected Set(value As UInteger)
-
+                _Index = value
             End Set
         End Property
 

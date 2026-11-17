@@ -147,20 +147,51 @@ Public Class DX7
         Public TRNS As Byte         'Transpose
 
         'Tables for converting YM operator values to DX7 operator values
-        'Phase distortion
-        Shared ReadOnly PDTable As Byte() =
-            {7, 8, 9, 10, 7, 6, 5, 4}
 
         'Algorithm select
-        Shared ReadOnly ALSTable As Byte() =
+        Shared ReadOnly YMALSTable As Byte() =
             {0, 13, 7, 6, 4, 21, 30, 31}
 
-        'Amplitude modulateion depth
-        Shared ReadOnly AMDTable As Byte() =
+        Public ReadOnly YMTLTable() As Byte = {
+            99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84,
+            83, 82, 81, 80, 79, 78, 77, 76, 75, 74, 73, 72, 71, 70, 69, 68,
+            67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52,
+            51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36,
+            35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20,
+            19, 19, 18, 18, 17, 17, 16, 16, 15, 15, 14, 14, 13, 13, 12, 12,
+            11, 11, 10, 10, 9, 9, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4,
+            3, 3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        }
+
+        Public ReadOnly YMARTable() As Byte = {
+            0, 5, 9, 13, 17, 21, 24, 28,
+            31, 35, 38, 41, 45, 48, 51, 54,
+            58, 61, 64, 67, 70, 73, 76, 79,
+            82, 85, 88, 91, 93, 96, 98, 99
+        }
+
+        Public ReadOnly YMDRSRTable() As Byte = {
+            0, 3, 6, 10, 13, 16, 19, 22,
+            26, 29, 32, 35, 38, 42, 45, 48,
+            51, 54, 58, 61, 64, 67, 70, 73,
+            77, 80, 83, 86, 89, 93, 96, 99
+        }
+
+        Public ReadOnly YMRRTable() As Byte = {
+            0, 7, 13, 20, 26, 33, 40, 46,
+            53, 59, 66, 73, 79, 86, 92, 99
+        }
+
+        'Phase detune
+        Shared ReadOnly YMDTTable As Byte() =
+            {7, 8, 9, 10, 7, 6, 5, 4}
+
+        'Amplitude modulation depth
+        Shared ReadOnly OPNAMDTable As Byte() =
             {0, 35, 75, 99}
 
         'LFO speed
-        Shared ReadOnly LFSTable As Byte() =
+        Shared ReadOnly OPNLFSTable As Byte() =
             {26, 29, 30, 31, 32, 35, 64, 75}
 
         Sub New(index As Long, Optional voiceName As String = "Voice")
@@ -216,6 +247,7 @@ Public Class DX7
                     voice
                 NewOPNVoice(index, opnVoice)
             End If
+
         End Sub
 
         Sub NewOPMVoice(index As Long, voice As OPM.Voice)
@@ -247,50 +279,48 @@ Public Class DX7
                         End Select
                     End If
 
-                    'Rates
+                    'Get YM rates and levels
                     Dim ar, dr, sr, rr, sl As Integer
+                    Dim ks As Integer
                     With voice
                         ar = .AR(ymopIdx)
                         dr = .DR(ymopIdx)
                         sr = .SR(ymopIdx)
                         rr = .RR(ymopIdx)
                         sl = .SL(ymopIdx)
+                        ks = .KS(ymopIdx)
                     End With
 
-                    If ar = 31 Then
+                    'Set DX7 rates
+                    If ar = 0 Then
+                        .R1 = 0
+                        .L1 = 0
+                        .TL = 0
+                    ElseIf ar = 30 AndAlso ks > 0 OrElse ar = 31 Then
                         .R1 = 99
                     Else
-                        .R1 = Math.Clamp(Math.Round(3.1 * ar + 2), 0, 99)
+                        .R1 = YMARTable(ar)
                     End If
 
-                    'Adjust rate based on decay 1 level
-                    Dim slAdj As Single =
-                        (15 - slAdj) / 2
+                    .R2 = YMDRSRTable(dr)
+                    .R3 = YMDRSRTable(sr)
+                    .R4 = YMRRTable(rr)
 
-                    .R2 = Math.Clamp(Math.Round(3 * dr + slAdj), 0, 99)
-                    .R3 = Math.Clamp(Math.Round(3 * sr + slAdj), 0, 99)
-                    .R4 = Math.Clamp(Math.Round(6.2 * rr + 6 - (sl / 2)), 0, 99)
-
-                    'Levels
+                    'Set DX7 rates
                     .L2 = Math.Clamp(Math.Round(99 - (sl * 6.6)), 0, 99)
                     .L3 = 0
 
-                    .PD = PDTable(voice.DT1(ymopIdx))
+                    .PD = YMDTTable(voice.DT1(ymopIdx))
                     .RS = Math.Clamp(voice.KS(ymopIdx) * 2, 0, 7)
 
                     .AMS = voice.AMS
 
+                    'Get YM TL and set DX TL
                     Dim tl As Integer =
                         voice.TL(ymopIdx)
-                    If tl >= 96 Then
-                        .TL = 0
-                    Else
-                        .TL = Math.Round(99 - 0.7795 * tl)
-                        '.TL =  (127 - tl) * (99 / 127)
-                        '.TL = Math.Round(99 * Math.Pow(1 - (tl / 127), 0.65))
-                    End If
+                    .TL = YMTLTable(tl)
 
-                    'Add DT2 to Coarse Pitch
+                    'OPM ONLY: Set coarse and fine pitch
                     Dim mul As Single =
                         voice.Mul(ymopIdx)
                     mul = If(mul = 0, 0.5, mul)
@@ -308,15 +338,20 @@ Public Class DX7
                 End With
             Next
 
-            ALS = ALSTable(voice.Con)
-
+            'OPM and OPN
+            ALS = YMALSTable(voice.Con)
             OPI = 1
-            FBL = (voice.FL And 7) - 1
+            FBL = voice.FL And 7
 
+            'OPM ONLY
             LFS = Math.Clamp(Math.Round(99 * Math.Pow(voice.LFOFreq / 255, 0.72)), 0, 99)
             LPMD = Math.Round(99 * Math.Pow(voice.PMD / 125, 0.85))
             LAMD = Math.Round(99 * (voice.AMD / 125))
+
+            'OPN and OPM
             LPMS = voice.PMS
+
+            'OPM ONLY
             Select Case voice.Waveform
                 Case OPM.WaveformType.Sawtooth
                     LFW = WaveformType.SawDown
@@ -358,53 +393,47 @@ Public Class DX7
                         End Select
                     End If
 
-                    'Rates
+                    'Get YM rates and levels
                     Dim ar, dr, sr, rr, sl As Integer
+                    Dim ks As Integer
                     With voice
                         ar = .AR(ymopIdx)
                         dr = .DR(ymopIdx)
                         sr = .SR(ymopIdx)
                         rr = .RR(ymopIdx)
-                        sl = voice.SL(ymopIdx)
+                        sl = .SL(ymopIdx)
+                        ks = .KS(ymopIdx)
                     End With
 
-                    If ar = 31 Then
+                    'Set DX7 rates
+                    If ar = 0 Then
+                        .R1 = 0
+                        .L1 = 0
+                        .TL = 0
+                    ElseIf ar = 30 AndAlso ks > 0 OrElse ar = 31 Then
                         .R1 = 99
                     Else
-                        .R1 = Math.Clamp(Math.Round(3.1 * ar + 2), 0, 99) 'OPNR1Table(voice.AR(ymopIdx))
+                        .R1 = YMARTable(ar)
                     End If
+                    .R2 = YMDRSRTable(dr)
+                    .R3 = YMDRSRTable(sr)
+                    .R4 = YMRRTable(rr)
 
-                    'Adjust rate based on sustain level
-                    Dim slAdj As Single =
-                        (15 - sl) / 2
-
-                    .R2 = Math.Clamp(Math.Round(3 * dr + slAdj), 0, 99) 'OPNR2Table(voice.DR(ymopIdx), voice.SL(ymopIdx))
-                    .R3 = Math.Clamp(Math.Round(3 * sr + slAdj), 0, 99) 'OPNR3Table(voice.SR(ymopIdx), voice.SL(ymopIdx))
-                    .R4 = Math.Clamp(Math.Round(6.2 * rr + 6 - (sl / 2)), 0, 99) 'OPNR4Table(voice.RR(ymopIdx), voice.SL(ymopIdx))
-
-                    '.R1 = Math.Round(voice.AR(ymopIdx) * (99 / 31))
-                    '.R2 = Math.Round(voice.DR(ymopIdx) * (99 / 31))
-                    '.R3 = Math.Round(voice.SR(ymopIdx) * (99 / 31))
-                    '.R4 = Math.Round(((voice.RR(ymopIdx) * 2) + 1) * (99 / 31))
-
+                    'Set DX7 levels
                     .L2 = Math.Clamp(Math.Round(99 - (sl * 6.6)), 0, 99)
                     .L3 = 0
 
-                    .PD = PDTable(voice.DT(ymopIdx))
+                    .PD = YMDTTable(voice.DT(ymopIdx))
                     .RS = Math.Clamp(voice.KS(ymopIdx) * 2, 0, 7)
 
                     .AMS = voice.AMS
 
+                    'Get YM TL and set DX TL
                     Dim tl As Integer =
                         voice.TL(ymopIdx)
-                    If tl >= 96 Then
-                        .TL = 0
-                    Else
-                        .TL = Math.Round(99 - 0.7795 * tl)
-                        '.TL =  (127 - tl) * (99 / 127)
-                        '.TL = Math.Round(99 * Math.Pow(1 - (tl / 127), 0.65))
-                    End If
+                    .TL = YMTLTable(tl)
 
+                    'OPN ONLY: Set coarse and fine tune for special mode channel 3
                     If voice.IsCh3Sp Then
                         Dim hz As Integer =
                             voice.Ch3SpHz(ymopIdx)
@@ -430,13 +459,16 @@ Public Class DX7
                 End With
             Next
 
-            ALS = ALSTable(voice.Con)
-
+            'OPM and OPN
+            ALS = YMALSTable(voice.Con)
             OPI = 1
             FBL = voice.FB And 7
 
-            LFS = LFSTable(voice.LFOFreq)
-            LAMD = AMDTable(voice.AMS)
+            'OPN ONLY
+            LFS = OPNLFSTable(voice.LFOFreq)
+            LAMD = OPNAMDTable(voice.AMS)
+
+            'OPM and OPN
             LPMS = voice.PMS
         End Sub
 

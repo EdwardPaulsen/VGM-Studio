@@ -1240,8 +1240,7 @@ End Class
 
 Public Class YM2203
 
-    Public Class Chip
-        Inherits OPN.Chip
+    Public Class Chip : Inherits OPN.Chip
         ' The Yamaha YM2203 includes:
         ' 1) 12 FM-Operator Type N (OPN) Units (3 channels, 4 operators each).
         ' 2) A YM2149 Sound Source Generator (SSG) / Programmable Sound Generator (PSG) compatible with General Instrument AY-3-8910
@@ -1336,8 +1335,7 @@ Public Class YM2612
     End Class
 
 #End Region
-    Public Class Chip
-        Inherits OPN.Chip
+    Public Class Chip : Inherits OPN.Chip
         ' The Yamaha YM2612 includes:
         ' 1) 24 FM-Operator Type N (OPN) Units (6 channels, 4 operators each).
         ' 2) A DAC that can replace the output of channel 6.

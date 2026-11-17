@@ -1,14 +1,15 @@
+'MIDI Class
+'Copyright © 1999–2026 Paul Jensen
+'Reference(s):
+'- Birch, Dr. Sebastian Anthony
+'  "The MIDI File Format"
+'  <https://www.personal.kent.edu/~sbirch/Music_Production/MP-II/MIDI/midi_file_format.htm>
+
+
 Imports System.IO
 Imports System.Math
 
 Public Class Midi
-
-#Region "Constants"
-    Public Const HeaderChunk As String = "MThd"
-    Public Const TrackChunk As String = "MTrk"
-    Public Const HeaderChunkSize As Integer = 6
-    Public Const TrackChunkSize As Integer = 0
-#End Region
 
 #Region "Shared Methods"
 
@@ -18,11 +19,24 @@ Public Class Midi
         Return Pow(10, dB / 40) * 127
     End Function
 
+    Shared Function GetVariableLength(value As ULong) As Byte()
+        Dim list As New List(Of Byte)
+        With list
+            .Add(value And &H7F)
+            Do
+                value >>= 7
+                If value <= 0 Then Exit Do
+                .Insert(0, (value And &H7F) Or &H80)
+            Loop
+            Return .ToArray
+        End With
+    End Function
+
 #End Region
 
 #Region "Enums"
 
-    Public Enum TimeDivisionType As Integer
+    Public Enum TimeDivisionType As Byte
         SMTPE = 0
         Ticks = 1
     End Enum
@@ -196,10 +210,12 @@ Public Class Midi
         ProgramChange = &HC0
         ChannelAftertouch = &HD0
         PitchWheel = &HE0
+        Sysex = &HF0
+        SysexEscape = &HF7
         MetaEvent = &HFF
     End Enum
 
-    Public Enum MetaEventType
+    Public Enum MetaEventType As Byte
         TrackNumber = &H0
         TextEvent = &H1
         CopyrightNotice = &H2
@@ -208,9 +224,13 @@ Public Class Midi
         Lyric = &H5
         Marker = &H6
         CuePoint = &H7
+        ChannelPrefix = &H20
         EndOfTrack = &H2F
         SetTempo = &H51
+        SMTPEOffset = &H54
         TimeSignature = &H58
+        KeySignature = &H59
+        SequencerSpecific = &H7F
         'TODO: Add more types of Meta events
     End Enum
 
@@ -388,13 +408,13 @@ Public Class Midi
         Gunshot = 127
     End Enum
 
-    Public Enum PitchWheelValue As Short
-        Min = &H0S
-        Max = &H3FFFS
-        Center = &H2000S
+    Public Enum PitchWheelValue As UShort
+        Min = &H0US
+        Max = &H3FFFUS
+        Center = &H2000US
     End Enum
 
-    Public Enum RPN As Short
+    Public Enum RPN As UShort
         PitchBendRange = 0
     End Enum
 
@@ -452,18 +472,20 @@ Public Class Midi
 
     Public Class DeltaTime
         'Delta times are variable length, in big-endian byte order
-        Public ReadOnly Property Data() As List(Of Byte)
+        'Public ReadOnly Property Data() As List(Of Byte)
+        Public ReadOnly Property Data As Byte()
 
-        Sub New(ticks As Long)
-            Data = New List(Of Byte)
-            With Data
-                .Add(ticks And &H7F)
-                Do
-                    ticks >>= 7
-                    If ticks = 0 Then Exit Do
-                    .Insert(0, (ticks And &H7F) Or &H80)
-                Loop
-            End With
+        Sub New(ticks As ULong)
+            'Data = New List(Of Byte)
+            'With Data
+            '    .Add(ticks And &H7F)
+            '    Do
+            '        ticks >>= 7
+            '        If ticks <= 0 Then Exit Do
+            '        .Insert(0, (ticks And &H7F) Or &H80)
+            '    Loop
+            'End With
+            Data = GetVariableLength(ticks)
         End Sub
 
     End Class
@@ -654,15 +676,15 @@ Public Class Midi
         'End Sub
 
         Private Function ValueToBytes(value As PitchWheelValue) As Byte()
-            'Value is in LSB,MSB (fine, coarse) order
+            'Value is in LSB, MSB (fine, coarse) order
             Return {value And &H7F, (value >> 7) And &H7F}
         End Function
 
         Private Function BytesToValue(bytes As Byte()) As PitchWheelValue
             Dim value As PitchWheelValue =
-                bytes(1) << 7
-            value += bytes(0)
-            Return value
+                (bytes(1) << 7) Or CUShort(bytes(0))
+            'value += bytes(0)
+            Return value And PitchWheelValue.Max
         End Function
 
     End Class
@@ -687,14 +709,11 @@ Public Class Midi
     Public Class EndOfTrackEvent : Inherits MetaEvent
         Sub New()
             MyBase.New(MetaEventType.EndOfTrack, 0)
-            'With EventDataList
-            '    .Add(CByte(&H0))
-            'End With
         End Sub
     End Class
 
     Public Class SetTempoEvent : Inherits MetaEvent
-        Const Microsecs_Per_Minute As Long = 60000000
+        Const Microsecs_Per_Minute As ULong = 60000000
 
         Sub New(tempo As Single)
             MyBase.New(MetaEventType.SetTempo, 3)
@@ -737,45 +756,93 @@ Public Class Midi
 
 
     Public Class Sequence
-        Public Property Tracks As List(Of Track)
+
+        Private _Tracks As Dictionary(Of String, Track)
+        Public Property Tracks As Dictionary(Of String, Track)
+            Get
+                Return _Tracks
+            End Get
+            Private Set(value As Dictionary(Of String, Track))
+                _Tracks = value
+            End Set
+        End Property
 
         Sub New()
-            _Tracks = New List(Of Track)
+            'Initalize tracks
+            Tracks = New Dictionary(Of String, Track)
         End Sub
 
-        Public Sub Tick(ticks As Long)
-            For Each track As Track In Tracks
-                track.Tick(ticks)
+        Public Sub AddTrack(key As String, track As Track)
+            With track
+                Tracks.Add(key, track)
+            End With
+        End Sub
+
+        Public Sub Tick(ticks As ULong)
+            'For Each track As Track In Tracks
+            '    track.Tick(ticks)
+            'Next
+            For Each kvp As KeyValuePair(Of String, Track) In Tracks
+                kvp.Value.Tick(ticks)
             Next
         End Sub
 
         Public Sub Tick(ticks As Single)
-            For Each track As Track In Tracks
-                track.Tick(ticks)
+            'For Each track As Track In Tracks
+            '    track.Tick(ticks)
+            'Next
+            For Each kvp As KeyValuePair(Of String, Track) In Tracks
+                kvp.Value.Tick(ticks)
             Next
         End Sub
 
     End Class
 
     Public Class Track
-        Public ReadOnly Property Sequence As Sequence
 
-        Public ReadOnly Property Num As Integer
+        'Public ReadOnly Property Index As Integer
+        '    Get
+        '        Dim idx As Integer = 0
+        '        For Each track As Track In Sequence.Tracks
+        '            If track Is Me Then
+        '                Return idx
+        '            End If
+        '            idx += 1
+        '        Next
+        '        Return -1
+        '    End Get
+        'End Property
+
+        'Private _Sequence As Sequence
+        'Public Property Sequence As Sequence
+        '    Get
+        '        Return Sequence
+        '    End Get
+        '    Protected Set(value As Sequence)
+        '        _Sequence = value
+        '    End Set
+        'End Property
+
+        Private _Channel As Channel()
+        Public Property Channel As Channel()
             Get
-                Dim index As Integer = 0
-                For Each track As Track In Sequence.Tracks
-                    If track Is Me Then
-                        Return index
-                    End If
-                    index += 1
-                Next
-                Return -1
+                Return _Channel
             End Get
+            Protected Set(value As Channel())
+                _Channel = value
+            End Set
         End Property
 
-        Public Channel(ChannelValue.Max) As Channel
+        Private _TrackData As List(Of Byte)
+        Public Property Data As List(Of Byte)
+            Get
+                Return _TrackData
+            End Get
+            Protected Set(value As List(Of Byte))
+                _TrackData = value
+            End Set
+        End Property
 
-        Public ReadOnly Property TrackData As List(Of Byte)
         Public Property Tempo As Single
 
         Private _IsOpen As Boolean
@@ -804,45 +871,64 @@ Public Class Midi
             End Set
         End Property
 
-        Private ReadOnly Property Ticks As Long 'Single
+        Private _Ticks As ULong
+        Private Property Ticks As ULong
+            Set(value As ULong)
+                _Ticks = value
+            End Set
+            Get
+                Return _Ticks
+            End Get
+        End Property
 
-        Sub New(ByRef sequence As Sequence)
-            _Sequence = sequence
-            sequence.Tracks.Add(Me)
+        'Sub New(ByRef sequence As Sequence)
+        '    Me.Sequence = sequence
+        '    sequence.Tracks.Add(Me)
 
-            TrackData = New List(Of Byte)
+        '    TrackData = New List(Of Byte)
 
+        '    ReDim Channel(ChannelValue.Max)
+        '    For chIdx As Integer = 0 To Channel.GetUpperBound(0)
+        '        Channel(chIdx) = New Channel(Me, chIdx, Midi.Channel.StatusType.Ready)
+        '    Next
+
+        '    IsOpen = True
+        'End Sub
+
+        Sub New()
+            ReDim Channel(ChannelValue.Max)
             For chIdx As Integer = 0 To Channel.GetUpperBound(0)
                 Channel(chIdx) = New Channel(Me, chIdx, Midi.Channel.StatusType.Ready)
             Next
+
+            Data = New List(Of Byte)
 
             IsOpen = True
         End Sub
 
         Public Sub Tick(ticks As Long)
-            _Ticks += ticks
+            Me.Ticks += ticks
         End Sub
 
         ' ********************************
         ' *** Methods for adding events
 
         Private Sub AddDeltaTime(dt As DeltaTime)
-            TrackData.AddRange(dt.Data)
+            Data.AddRange(dt.Data)
         End Sub
 
         Public Sub AddEvent(midievent As MidiEvent)
-            If _IsClosed = True Then Exit Sub
+            If IsClosed Then Exit Sub
 
-            AddDeltaTime(New DeltaTime(_Ticks))
-            _Ticks = 0
-            TrackData.AddRange(midievent.Data)
+            AddDeltaTime(New DeltaTime(Ticks))
+            Ticks = 0
+            Data.AddRange(midievent.Data)
 
             If TypeOf (midievent) Is EndOfTrackEvent Then
-                _IsClosed = True
+                IsClosed = True
             End If
         End Sub
 
-        'NoteOff = &H80
         Public Sub AddNoteOffEvent(channel As ChannelValue, note As Note, velocity As VelocityValue, noteIndex As Integer)
             AddEvent(New NoteOffEvent(channel, note.Number, velocity))
 
@@ -853,7 +939,6 @@ Public Class Midi
             End With
         End Sub
 
-        'NoteOn = &H90
         Public Sub AddNoteOnEvent(channel As ChannelValue, note As Note, velocity As VelocityValue, noteIndex As Integer)
             AddEvent(New NoteOnEvent(channel, note.Number, velocity))
 
@@ -864,12 +949,10 @@ Public Class Midi
             End With
         End Sub
 
-        'NoteAftertouch = &HA0
         Public Sub AddNoteAftertouchEvent(channel As ChannelValue, note As NoteNumber, aftertouch As VelocityValue)
             AddEvent(New NoteAftertouchEvent(channel, note, aftertouch))
         End Sub
 
-        'ControllerChange = &HB0
         Public Sub AddControllerChangeEvent(channel As ChannelValue, controller As ControllerType, value As ControllerValue)
             AddEvent(New ControllerChangeEvent(channel, controller, value))
         End Sub
@@ -900,7 +983,6 @@ Public Class Midi
             Me.Channel(channel).PitchBendRange = semitones
         End Sub
 
-        'ProgramChange = &HC0
         Public Sub AddProgramChangeEvent(channel As ChannelValue, program As ProgramValue)
             AddEvent(New ProgramChangeEvent(channel, program))
             With Me.Channel(channel)
@@ -908,12 +990,10 @@ Public Class Midi
             End With
         End Sub
 
-        'ChannelAftertouch = &HD0
         Public Sub AddChannelAftertouchEvent(channel As ChannelValue, aftertouch As VelocityValue)
             AddEvent(New ChannelAftertouchEvent(channel, aftertouch))
         End Sub
 
-        'PitchWheel = &HE0
         Public Sub AddPitchWheelEvent(channel As ChannelValue, pitchWheel As PitchWheel)
             AddEvent(New PitchWheelEvent(channel, pitchWheel.Value))
             With Me.Channel(channel)
@@ -935,35 +1015,35 @@ Public Class Midi
             AddEvent(New TimeSignatureEvent(num, den, met, n32nds))
         End Sub
 
-        'MetaEvent = &HFF
         Public Sub Close()
             Dim eotEvent As New EndOfTrackEvent
             AddEvent(eotEvent)
             _IsClosed = True
         End Sub
 
-        Public Sub InsertTrackHeader()
-            ' Initialize Track header ("MTrk")
-            Dim MTrk As Byte() = {Asc("M"), Asc("T"), Asc("r"), Asc("k")}
-            Dim TrackLen As UInteger = Convert.ToUInt32(TrackData.Count)
-
-            With TrackData
-                .InsertRange(0, MTrk)
-            End With
-
-            With TrackData
-                .Insert(4, (TrackLen >> 24) And &HFF)
-                .Insert(5, (TrackLen >> 16) And &HFF)
-                .Insert(6, (TrackLen >> 8) And &HFF)
-                .Insert(7, TrackLen And &HFF)
-            End With
-        End Sub
-
     End Class
 
     Public Class Channel
-        Public ReadOnly Property Track As Track
-        Public ReadOnly Property Num As Integer
+
+        Protected _Track As Track
+        Public Property Track As Track
+            Get
+                Return _Track
+            End Get
+            Protected Set(value As Track)
+                _Track = value
+            End Set
+        End Property
+
+        Protected _Index As Integer
+        Public Property Index As Integer
+            Get
+                Return _Index
+            End Get
+            Set(value As Integer)
+                _Index = value
+            End Set
+        End Property
 
         Const Max_Note_Index As Integer = 127
         Public NoteOn(Max_Note_Index) As Boolean
@@ -973,6 +1053,7 @@ Public Class Midi
         Public PitchWheel As PitchWheel
         Public PitchWheelValue As Integer
         Public Property PitchBendRange As Integer = 2
+
         Public Volume As ControllerValue
         Public Pan As ControllerValue
         Public Program As ProgramValue
@@ -984,9 +1065,9 @@ Public Class Midi
 
         Public Status As StatusType
 
-        Sub New(ByRef track As Track, num As Integer, initialStatus As StatusType)
-            _Track = track
-            _Num = num
+        Sub New(ByRef track As Track, index As Integer, initialStatus As StatusType)
+            Me.Track = track
+            Me.Index = index
             Reset(initialStatus)
         End Sub
 
@@ -998,9 +1079,6 @@ Public Class Midi
             For noteNum As Integer = 0 To Max_Note_Index
                 Note(noteNum) = New Note(0, VelocityValue.Normal)
             Next
-            'For noteNum As Integer = 0 To Max_Note_Index
-            '    Velocity(noteNum) = VelocityValue.Normal
-            'Next
             PitchWheel = New PitchWheel(0, PitchBendRange)
             Volume = ControllerValue.VolumeMin
             Pan = ControllerValue.PanCenter
@@ -1015,21 +1093,14 @@ Public Class Midi
                 StopNote(noteIndex)
             End If
 
-            Track.AddNoteOnEvent(Num, note, velocity, noteIndex)
+            Track.AddNoteOnEvent(Index, note, velocity, noteIndex)
 
             SetPitch(note)
-            'PitchWheel.Pitch = note.Fraction
-            'Track.AddPitchWheelEvent(Num, pitchWheel)
         End Sub
-
-        'Public Sub PlayNote(fNote As Single, velocity As VelocityValue, noteIndex As Integer)
-        '    Dim note As New Note(fNote)
-        '    PlayNote(note, velocity, noteIndex)
-        'End Sub
 
         Public Sub StopNote(noteIndex As Integer)
             If NoteOn(noteIndex) = True Then
-                Track.AddNoteOffEvent(Num, Note(noteIndex), 0, noteIndex)
+                Track.AddNoteOffEvent(Index, Note(noteIndex), 0, noteIndex)
                 'ResetPitch()
             End If
         End Sub
@@ -1037,7 +1108,7 @@ Public Class Midi
         Public Sub SetPitch(note As Note)
             If PitchWheel.Pitch <> note.Fraction Then
                 PitchWheel.Pitch = note.Fraction
-                Track.AddPitchWheelEvent(Num, PitchWheel)
+                Track.AddPitchWheelEvent(Index, PitchWheel)
             End If
         End Sub
 
@@ -1057,9 +1128,10 @@ Public Class Midi
                 If Abs(newPitchBend) > PitchBendRange Then
                     PlayNote(newNote, Velocity(noteIndex), noteIndex)
                 Else
-                    If newPitchBend <> PitchWheel.Pitch Then 'avoid redundant pitch wheel events
+                    'Avoid redundant pitch wheel events
+                    If newPitchBend <> PitchWheel.Pitch Then
                         PitchWheel.Pitch = newPitchBend
-                        Track.AddPitchWheelEvent(Num, PitchWheel)
+                        Track.AddPitchWheelEvent(Index, PitchWheel)
                     End If
                 End If
 
@@ -1075,13 +1147,13 @@ Public Class Midi
         Public Sub ResetPitch()
             If PitchWheel.Pitch <> 0 Then
                 PitchWheel.Pitch = 0
-                Track.AddPitchWheelEvent(Num, PitchWheel)
+                Track.AddPitchWheelEvent(Index, PitchWheel)
             End If
         End Sub
 
         Public Sub ChangeVolume(volume As ControllerValue)
             If Me.Volume <> volume Then
-                Track.AddVolumeChangeEvent(Num, volume)
+                Track.AddVolumeChangeEvent(Index, volume)
             End If
         End Sub
 
@@ -1089,25 +1161,25 @@ Public Class Midi
             Dim midiVol As Integer =
                 Midi.Volume.Value(attIndB, attMax, refVol)
             If midiVol <> Volume Then
-                Track.AddVolumeChangeEvent(Num, midiVol)
+                Track.AddVolumeChangeEvent(Index, midiVol)
             End If
         End Sub
 
         Public Sub ChangeProgram(program As ProgramValue)
             If Me.Program <> program Then
-                Track.AddProgramChangeEvent(Num, program)
+                Track.AddProgramChangeEvent(Index, program)
             End If
         End Sub
 
         Public Sub ChangePan(pan As ControllerValue)
             If Me.Pan <> pan Then
-                Track.AddPanChangeEvent(Num, pan)
+                Track.AddPanChangeEvent(Index, pan)
             End If
         End Sub
 
         Public Sub ChangePitchBendRange(semitones As Byte, cents As Byte)
             PitchWheel.Range = semitones
-            Track.AddRPNPitchBendRangeEvent(Num, semitones, cents)
+            Track.AddRPNPitchBendRangeEvent(Index, semitones, cents)
         End Sub
 
     End Class
@@ -1145,7 +1217,7 @@ Public Class Midi
                 Static noteNames As String() = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
 
                 Dim num As Single = Number
-                Dim note As Integer = Math.Floor(num)
+                Dim note As Integer = Floor(num)
                 Dim octave As Integer =
                     (note \ 12) - 2
                 note = note Mod 12
@@ -1161,15 +1233,6 @@ Public Class Midi
             frac = Abs(frac)
             frac -= Floor(frac)
             frac *= sign
-
-            ''Keep initial pitch bend between -0.5 and +0.5
-            'If frac >= 0.5 Then
-            '    num = Min(num + 1, NoteNumber.Max)
-            '    frac -= 1
-            'ElseIf frac <= -0.5 Then
-            '    num = Max(num - 1, NoteNumber.Min)
-            '    frac += 1
-            'End If
 
             _Pitch = Max(num + frac, 0)
             _Hz = Max(ValueToHz(Pitch), 0)
@@ -1192,9 +1255,17 @@ Public Class Midi
 
     Public Class PitchWheel
         'Pitch is stored internally as semitones
+        Protected _Pitch As Single
         Public Property Pitch As Single
+            Get
+                Return _Pitch
+            End Get
+            Set(value As Single)
+                _Pitch = value
+            End Set
+        End Property
 
-        Private _Range As Integer
+        Protected _Range As Integer
         Public Property Range As Integer
             Get
                 Return _Range
@@ -1210,35 +1281,16 @@ Public Class Midi
                     PitchWheelValue.Center \ Range
                 Dim val As Integer =
                     PitchWheelValue.Center + (Pitch * semitoneIncrement)
-                'Clip the output value to the maximum supported by the Midi standard
-                val = Min(Max(val, PitchWheelValue.Min), PitchWheelValue.Max)
+                'Clamp the output value to the maximum supported by the Midi standard
+                val = Clamp(val, PitchWheelValue.Min, PitchWheelValue.Max)
                 Return val
             End Get
         End Property
 
         Sub New(pitch As Single, range As Integer)
-            _Pitch = pitch
+            Me.Pitch = pitch
             Me.Range = range
         End Sub
-
-        ''Pitch is stored internally as semitones
-        'Public ReadOnly Property Pitch As Single
-
-        'Public ReadOnly Property Value(range As Integer) As PitchWheelValue
-        '    Get
-        '        Dim semitoneIncrement As Single =
-        '            8192 / range 'PitchWheelValue.Max / (range * 2)
-        '        Dim val As Integer =
-        '            PitchWheelValue.Center + (Pitch * semitoneIncrement)
-        '        'Clip the output value to the maximum supported by the Midi standard
-        '        val = Min(Max(val, PitchWheelValue.Min), PitchWheelValue.Max)
-        '        Return val
-        '    End Get
-        'End Property
-
-        'Sub New(semitones As Single)
-        '    _Pitch = semitones
-        'End Sub
 
     End Class
 
@@ -1254,8 +1306,8 @@ Public Class Midi
                 'midiVol = refVol * (10 ^ (-attIndB / 20))
             End If
 
-            'Limit volume
-            midiVol = Min(Max(midiVol, ControllerValue.VolumeMin), ControllerValue.VolumeMax)
+            'Clamp volume
+            midiVol = Clamp(midiVol, ControllerValue.VolumeMin, ControllerValue.VolumeMax)
 
             Return midiVol
         End Function
@@ -1268,47 +1320,39 @@ Public Class Midi
                 Dim bytes(1) As Byte
 
                 Select Case Format
-
                     Case DivisionFormat.TicksPerQuarterNote
                         bytes(0) = (TicksPerQuarterNote >> 8) And &H7F
                         bytes(1) = TicksPerQuarterNote And &HFF
-
                     Case DivisionFormat.SMTPEFrames
-                        Dim negFrames As Short =
-                            FramesPerSecond
-                        negFrames = -negFrames
-                        Dim frames As Byte() =
-                            BitConverter.GetBytes(negFrames)
-                        bytes(0) = frames(0)
+                        bytes(0) = FramesPerSecond
                         bytes(1) = TicksPerFrame
-
                 End Select
 
                 Return bytes
-
             End Get
         End Property
 
-        Enum DivisionFormat As Integer
+        Enum DivisionFormat As Byte
             TicksPerQuarterNote
             SMTPEFrames
         End Enum
 
         Public ReadOnly Property Format As DivisionFormat
 
-        Public ReadOnly Property TicksPerQuarterNote As Short
+        Public ReadOnly Property TicksPerQuarterNote As UShort
 
         Enum FramesPerSecondValue As Byte
-            Film24Hz = 24
-            PAL25Hz = 25
-            NTSC29Hz = 29
-            NTSC30Hz = 30
+            'All values are two's compliment negative numbers
+            Film24Hz = &HE8 '24
+            PAL25Hz = &HE7
+            NTSC29Hz = &HE3
+            NTSC30Hz = &HE2
         End Enum
 
         Public ReadOnly Property FramesPerSecond As FramesPerSecondValue
         Public ReadOnly Property TicksPerFrame As Byte
 
-        Sub New(ticksPerQuarterNote As Short)
+        Sub New(ticksPerQuarterNote As UShort)
             Format = DivisionFormat.TicksPerQuarterNote
             _TicksPerQuarterNote = ticksPerQuarterNote
         End Sub
@@ -1322,114 +1366,169 @@ Public Class Midi
     End Class
 
     Public MustInherit Class MidiFile
-        Public ReadOnly Property Header As FileHeader
-        Public MustOverride ReadOnly Property FileData As List(Of Byte)
-        Public ReadOnly Property Format As Integer
-        Public Property TrackCount As Integer
 
-        Public Property TimeDivision As TimeDivision
+        Public Const HeaderChunkID As String = "MThd"
+        Public Const HeaderChunkSize As UInteger = 6
 
-        Structure FileHeader
-            Shared ReadOnly MThd As String = "MThd"
-            Shared ReadOnly Length As Integer = 6
-            Public Property Format As Short
-            Public Property TrackCount As Short
+        Public Const TrackChunkID As String = "MTrk"
+        Public Const TrackChunkSize As UInteger = 0
 
-            Public ReadOnly Property Data As Byte()
-                Get
-                    Dim byteList As New List(Of Byte)
-                    Dim bytes As Byte()
+        Public Enum MidiFormat As UShort
+            Format0 = 0
+            Format1 = 1
+            Format2 = 2
+        End Enum
+        Public ReadOnly Property Format As MidiFormat
+        Public ReadOnly Property TrackCount As UShort
+            Get
+                Return Tracks.Count
+            End Get
+        End Property
+        Public ReadOnly Property TimeDivision As TimeDivision
+        Public ReadOnly Property Tracks As List(Of Track)
+        Public ReadOnly Property Data As List(Of Byte)
 
-                    bytes = Text.Encoding.ASCII.GetBytes(MThd.ToCharArray)
-                    byteList.AddRange(bytes)
-
-                    bytes = BitConverter.GetBytes(Length)
-                    Array.Reverse(bytes)
-                    byteList.AddRange(bytes)
-
-                    bytes = BitConverter.GetBytes(Format)
-                    Array.Reverse(bytes)
-                    byteList.AddRange(bytes)
-
-                    bytes = BitConverter.GetBytes(TrackCount)
-                    Array.Reverse(bytes)
-                    byteList.AddRange(bytes)
-
-                    Return byteList.ToArray
-                End Get
-            End Property
-
-            Sub New(format As Integer, trackCount As Integer)
-                _Format = format
-                _TrackCount = trackCount
-            End Sub
-
-        End Structure
-
-        Sub New(format As Integer, trackCount As Integer, td As TimeDivision)
-            _Header = New FileHeader(format, trackCount)
+        Sub New(format As MidiFormat, td As TimeDivision)
+            _Format = format
             _TimeDivision = td
-        End Sub
-
-        Protected Sub AddFileHeader()
-            'Dim MThd As Byte() = {Asc("M"), Asc("T"), Asc("h"), Asc("d")}   'Midi Track header ("MThd")
-            ''***All of the following values are high byte first in the file
-            'Dim HeaderLen As Byte() = {0, 0, 0, 6}      'header length (=6) (4 bytes)
-            'Dim MidiFormat As Byte() = {0, 0}           'Midi format (=0) (2 bytes)
-            'Dim NumTracks As Byte() = {0, 1}            'track count (=1) (2 bytes)
-
-            With FileData
-                .AddRange(Header.Data)
-                .AddRange(TimeDivision.Data)
-            End With
-
-            'With FileData
-            '    .AddRange(MThd)
-            '    .AddRange(HeaderLen)
-            '    .AddRange(MidiFormat)
-            '    .AddRange(NumTracks)
-            '    .AddRange(TimeDivision.Data)
-            'End With
-
-        End Sub
-
-    End Class
-
-    Public Class MidiFormat0File
-        Inherits MidiFile
-
-        Public Overrides ReadOnly Property FileData As List(Of Byte)
-
-        Public ReadOnly Property Track As Track
-
-        Sub New(ByRef track As Track, td As TimeDivision)
-            MyBase.New(0, 1, td)
-            _FileData = New List(Of Byte)
-            _Track = track
+            _Tracks = New List(Of Track)
+            _Data = New List(Of Byte)
         End Sub
 
         Public Sub Save(path As String)
-            AddFileHeader()
+            If Format = MidiFormat.Format0 And Tracks.Count > 1 Then
+                'TODO: If there is more than one track, save to format 1 instead.'
+            End If
 
-            With Track
-                If .IsOpen Then
-                    .Close()
-                End If
-                .InsertTrackHeader()
-            End With
+            'Add file header
+            Dim fileHeader As Byte() =
+                GetFileHeader(Me)
+            Data.AddRange(fileHeader)
 
-            FileData.AddRange(Track.TrackData)
+            'Add tracks
+            For Each track As Track In Tracks
+                'Add track header
+                With track
+                    If .IsOpen Then
+                        .Close()
+                    End If
+                End With
+                Dim trackHeader As Byte() =
+                GetTrackHeader(track)
+                Data.AddRange(trackHeader)
 
+                'Add track data
+                Data.AddRange(track.Data)
+            Next
+
+            'Write file
             Try
                 Using fsOut As New FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)
                     Using bw As New BinaryWriter(fsOut)
-                        bw.Write(FileData.ToArray)
+                        bw.Write(Data.ToArray)
                     End Using
                 End Using
             Catch ex As Exception
                 MsgBox(ex.Message.ToString)
             End Try
 
+        End Sub
+
+        Shared Function GetFileHeader(ByRef file As MidiFile) As Byte()
+            Dim header As New List(Of Byte)
+
+            With header
+                Dim bytes As Byte()
+
+                bytes = Text.Encoding.ASCII.GetBytes(HeaderChunkID)
+                .AddRange(bytes)
+
+                bytes = BitConverter.GetBytes(HeaderChunkSize)
+                Array.Reverse(bytes)
+                .AddRange(bytes)
+
+                bytes = BitConverter.GetBytes(file.Format)
+                Array.Reverse(bytes)
+                .AddRange(bytes)
+
+                bytes = BitConverter.GetBytes(file.TrackCount)
+                Array.Reverse(bytes)
+                .AddRange(bytes)
+
+                bytes = BitConverter.GetBytes(file.TimeDivision.TicksPerQuarterNote)
+                Array.Reverse(bytes)
+                .AddRange(bytes)
+
+                Return .ToArray
+            End With
+
+        End Function
+
+        Shared Function GetTrackHeader(ByRef track As Track) As Byte()
+            Dim header As New List(Of Byte)
+
+            With header
+                Dim bytes As Byte()
+
+                bytes = Text.Encoding.ASCII.GetBytes(TrackChunkID)
+                .AddRange(bytes)
+
+                bytes = BitConverter.GetBytes(track.Data.Count)
+                Array.Reverse(bytes)
+                .AddRange(bytes)
+
+                Return .ToArray
+            End With
+
+        End Function
+
+    End Class
+
+    Public Class MidiFormat0File : Inherits MidiFile
+
+        Sub New(ByRef track As Track, td As TimeDivision)
+            MyBase.New(MidiFormat.Format0, td)
+            Tracks.Add(track)
+        End Sub
+
+        '    Public Sub Save(path As String)
+        '        'Add file header
+        '        Dim fileHeader As Byte() =
+        '            GetFileHeader(Me)
+        '        Data.AddRange(fileHeader)
+
+        '        'Add track header
+        '        With Tracks(0)
+        '            If .IsOpen Then
+        '                .Close()
+        '            End If
+        '        End With
+        '        Dim trackHeader As Byte() =
+        '            GetTrackHeader(Tracks(0))
+        '        Data.AddRange(trackHeader)
+
+        '        'Add track data
+        '        Data.AddRange(Tracks(0).Data)
+
+        '        'Write file
+        '        Try
+        '            Using fsOut As New FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)
+        '                Using bw As New BinaryWriter(fsOut)
+        '                    bw.Write(Data.ToArray)
+        '                End Using
+        '            End Using
+        '        Catch ex As Exception
+        '            MsgBox(ex.Message.ToString)
+        '        End Try
+
+        '    End Sub
+
+    End Class
+
+    Public Class MidiFormat1File : Inherits MidiFile
+
+        Sub New(td As TimeDivision)
+            MyBase.New(MidiFormat.Format1, td)
         End Sub
 
     End Class
