@@ -1,10 +1,12 @@
 'MIDI Class
 'Copyright © 1999–2026 Paul Jensen
-'Reference(s):
+'References:
+'- MIDI® Association
+'  "Summary of MIDI 1.0 Messages
+'  https://midi.org/summary-of-midi-1-0-messages
 '- Birch, Dr. Sebastian Anthony
 '  "The MIDI File Format"
-'  <https://www.personal.kent.edu/~sbirch/Music_Production/MP-II/MIDI/midi_file_format.htm>
-
+'  https://www.personal.kent.edu/~sbirch/Music_Production/MP-II/MIDI/midi_file_format.htm
 
 Imports System.IO
 Imports System.Math
@@ -30,6 +32,16 @@ Public Class Midi
             Loop
             Return .ToArray
         End With
+    End Function
+
+    Shared Function GetManufacturerIDBytes(ID As ManufacturerID) As Byte()
+        Dim bytes As Byte() =
+            BitConverter.GetBytes(ID)
+        If bytes(0) = 0 And bytes(1) = 0 Then
+            Return {bytes(0), bytes(1), bytes(2)}
+        Else
+            Return {bytes(1)}
+        End If
     End Function
 
 #End Region
@@ -202,36 +214,36 @@ Public Class Midi
         Fortissimo = 111
     End Enum
 
-    Public Enum EventType As Byte
+    Public Enum MessageType As Byte
+        'Channel Voice Messages
         NoteOff = &H80
         NoteOn = &H90
         NoteAftertouch = &HA0
         ControllerChange = &HB0
         ProgramChange = &HC0
         ChannelAftertouch = &HD0
-        PitchWheel = &HE0
-        Sysex = &HF0
-        SysexEscape = &HF7
-        MetaEvent = &HFF
-    End Enum
+        PitchBend = &HE0
 
-    Public Enum MetaEventType As Byte
-        TrackNumber = &H0
-        TextEvent = &H1
-        CopyrightNotice = &H2
-        TrackName = &H3
-        InstrumentName = &H4
-        Lyric = &H5
-        Marker = &H6
-        CuePoint = &H7
-        ChannelPrefix = &H20
-        EndOfTrack = &H2F
-        SetTempo = &H51
-        SMTPEOffset = &H54
-        TimeSignature = &H58
-        KeySignature = &H59
-        SequencerSpecific = &H7F
-        'TODO: Add more types of Meta events
+        'System Common Messages
+        SystemExclusive = &HF0
+        TimeCodeQuarterFrame = &HF1
+        SongPositionPointer = &HF2
+        SongSelect = &HF3
+        Reserved1 = &HF4
+        Reserved2 = &HF5
+        TuneRequest = &HF6
+        EndOfExclusive = &HF7
+        MetaEvent = &HFF
+
+        'System Real-Time Messages
+        TimingClock = &HF8
+        Reserved3 = &HF9
+        StartSequence = &HFA
+        ContinueSequence = &HFB
+        StopSequence = &HFC
+        Reserved4 = &HFD
+        ActiveSensing = &HFE
+        Reset = &HFF
     End Enum
 
     Public Enum ControllerType As Byte
@@ -248,8 +260,16 @@ Public Class Midi
         SoundBrightness = 74
         RPNFine = 100
         RPNCoarse = 101
-        AllControllersOff = 123
+
+        'Channel Mode Messages
+        AllSoundOff = 120
+        ResetAllControllers = 121
+        LocalControl = 122
         AllNotesOff = 123
+        OmniModeOff = 124
+        OmniModeOn = 125
+        PolyModeOff = 126
+        PolyModeOn = 127
     End Enum
 
     Public Enum ControllerValue As Byte
@@ -468,23 +488,32 @@ Public Class Midi
         OpenTriangle = 81
     End Enum
 
+    Public Enum MetaEventType As Byte
+        TrackNumber = &H0
+        TextEvent = &H1
+        CopyrightNotice = &H2
+        TrackName = &H3
+        InstrumentName = &H4
+        Lyric = &H5
+        Marker = &H6
+        CuePoint = &H7
+        ChannelPrefix = &H20
+        EndOfTrack = &H2F
+        SetTempo = &H51
+        SMTPEOffset = &H54
+        TimeSignature = &H58
+        KeySignature = &H59
+        SequencerSpecific = &H7F
+        'TODO: Add more types of Meta events
+    End Enum
+
 #End Region
 
     Public Class DeltaTime
         'Delta times are variable length, in big-endian byte order
-        'Public ReadOnly Property Data() As List(Of Byte)
         Public ReadOnly Property Data As Byte()
 
         Sub New(ticks As ULong)
-            'Data = New List(Of Byte)
-            'With Data
-            '    .Add(ticks And &H7F)
-            '    Do
-            '        ticks >>= 7
-            '        If ticks <= 0 Then Exit Do
-            '        .Insert(0, (ticks And &H7F) Or &H80)
-            '    Loop
-            'End With
             Data = GetVariableLength(ticks)
         End Sub
 
@@ -506,7 +535,7 @@ Public Class Midi
     End Class
 
     Public MustInherit Class TrackEvent : Inherits MidiEvent
-        Public ReadOnly Property Type() As EventType
+        Public ReadOnly Property Type() As MessageType
             Get
                 Return DataList(0) And &HF0
             End Get
@@ -518,7 +547,7 @@ Public Class Midi
             End Get
         End Property
 
-        Sub New(type As EventType, channel As ChannelValue)
+        Sub New(type As MessageType, channel As ChannelValue)
             MyBase.New()
             With DataList
                 .Add(type Or (channel And &HF))
@@ -540,7 +569,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, note As NoteNumber, velocity As VelocityValue)
-            MyBase.New(EventType.NoteOff, channel)
+            MyBase.New(MessageType.NoteOff, channel)
 
             With DataList
                 .Add(note And NoteNumber.Max)
@@ -564,7 +593,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, note As NoteNumber, velocity As VelocityValue)
-            MyBase.New(EventType.NoteOn, channel)
+            MyBase.New(MessageType.NoteOn, channel)
 
             With DataList
                 .Add(note And NoteNumber.Max)
@@ -588,7 +617,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, note As NoteNumber, aftertouch As VelocityValue)
-            MyBase.New(EventType.NoteAftertouch, channel)
+            MyBase.New(MessageType.NoteAftertouch, channel)
 
             With DataList
                 .Add(note And NoteNumber.Max)
@@ -612,7 +641,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, controller As ControllerType, value As ControllerValue)
-            MyBase.New(EventType.ControllerChange, channel)
+            MyBase.New(MessageType.ControllerChange, channel)
 
             With DataList
                 .Add(controller)
@@ -630,7 +659,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, program As ProgramValue)
-            MyBase.New(EventType.ProgramChange, channel)
+            MyBase.New(MessageType.ProgramChange, channel)
 
             With DataList
                 .Add(program)
@@ -647,7 +676,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, aftertouch As ProgramValue)
-            MyBase.New(EventType.ChannelAftertouch, channel)
+            MyBase.New(MessageType.ChannelAftertouch, channel)
 
             With DataList
                 .Add(aftertouch)
@@ -664,7 +693,7 @@ Public Class Midi
         End Property
 
         Sub New(channel As ChannelValue, value As PitchWheelValue)
-            MyBase.New(EventType.PitchWheel, channel)
+            MyBase.New(MessageType.PitchBend, channel)
 
             With DataList
                 .AddRange(ValueToBytes(value))
@@ -690,18 +719,98 @@ Public Class Midi
     End Class
 
     Public MustInherit Class MetaEvent : Inherits MidiEvent
-        Public ReadOnly Property Type() As EventType
+        Public ReadOnly Property Type() As MessageType
             Get
                 Return DataList(1)
             End Get
         End Property
 
-        Sub New(type As MetaEventType, length As Byte)
+        Sub New(type As MetaEventType, length As ULong)
             MyBase.New()
             With DataList
-                .Add(&HFF)
+                .Add(MessageType.MetaEvent)
                 .Add(type)
-                .Add(length)
+                .AddRange(GetVariableLength(length))
+            End With
+        End Sub
+    End Class
+
+    Public Class TrackNumberEvent : Inherits MetaEvent
+        Sub New(num As UShort)
+            MyBase.New(MetaEventType.TrackNumber, 2)
+            Dim bytes As Byte() =
+                BitConverter.GetBytes(num)
+            Array.Reverse(bytes)
+            DataList.AddRange(bytes)
+        End Sub
+    End Class
+    Public Class TextEvent : Inherits MetaEvent
+        Sub New(txt As String)
+            MyBase.New(MetaEventType.TextEvent, txt.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(txt))
+            End With
+        End Sub
+    End Class
+
+    Public Class CopyrightNoticeEvent : Inherits MetaEvent
+        Sub New(year As String, name As String)
+            MyBase.New(MetaEventType.CopyrightNotice, $"(C) {year} {name}".Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes($"(C) {year} {name}"))
+            End With
+        End Sub
+    End Class
+
+    Public Class TrackNameEvent : Inherits MetaEvent
+        Sub New(name As String)
+            MyBase.New(MetaEventType.TrackName, name.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(name))
+            End With
+        End Sub
+    End Class
+
+    Public Class InstrumentNameEvent : Inherits MetaEvent
+        Sub New(name As String)
+            MyBase.New(MetaEventType.InstrumentName, name.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(name))
+            End With
+        End Sub
+    End Class
+    Public Class LyricEvent : Inherits MetaEvent
+        Sub New(txt As String)
+            MyBase.New(MetaEventType.Lyric, txt.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(txt))
+            End With
+        End Sub
+    End Class
+
+    Public Class MarkerEvent : Inherits MetaEvent
+        Sub New(txt As String)
+            MyBase.New(MetaEventType.Marker, txt.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(txt))
+            End With
+        End Sub
+    End Class
+
+    Public Class CuePointEvent : Inherits MetaEvent
+        Sub New(txt As String)
+            MyBase.New(MetaEventType.CuePoint, txt.Length)
+            With DataList
+                .AddRange(Text.Encoding.ASCII.GetBytes(txt))
+            End With
+        End Sub
+    End Class
+
+    Public Class ChannelPrefixEvent : Inherits MetaEvent
+        Sub New(prefix As Byte)
+            MyBase.New(MetaEventType.ChannelPrefix, 1)
+            With DataList
+                .Add(prefix)
             End With
         End Sub
     End Class
@@ -718,16 +827,26 @@ Public Class Midi
         Sub New(tempo As Single)
             MyBase.New(MetaEventType.SetTempo, 3)
 
-            Dim microsecsPerQuarterNote As Long =
-                Microsecs_Per_Minute / tempo
+            Dim microsecsPerQuarterNote As UInteger =
+                Floor(Microsecs_Per_Minute / tempo)
+
+            Dim bytes As Byte() =
+                BitConverter.GetBytes(microsecsPerQuarterNote)
 
             With DataList
-                .Add((microsecsPerQuarterNote >> 16) And &HFF)
-                .Add((microsecsPerQuarterNote >> 8) And &HFF)
-                .Add(microsecsPerQuarterNote And &HFF)
+                .Add(bytes(2))
+                .Add(bytes(1))
+                .Add(bytes(0))
             End With
         End Sub
 
+    End Class
+
+    Public Class SMTPEOffsetEvent : Inherits MetaEvent
+        Sub New(hh As Byte, mm As Byte, ss As Byte, fr As Byte, ff As Byte)
+            MyBase.New(MetaEventType.SMTPEOffset, 5)
+            DataList.AddRange({hh, mm, ss, fr, ff})
+        End Sub
     End Class
 
     Public Class TimeSignatureEvent : Inherits MetaEvent
@@ -754,6 +873,81 @@ Public Class Midi
 
     End Class
 
+    Public Class KeySignatureEvent : Inherits MetaEvent
+
+        Private _SharpsOrFlats As Integer
+        Public ReadOnly Property Sharps As Byte
+            Get
+                If _SharpsOrFlats > 0 Then
+                    Return _SharpsOrFlats
+                Else
+                    Return 0
+                End If
+            End Get
+        End Property
+        Public ReadOnly Property Flats As Byte
+            Get
+                If _SharpsOrFlats < 0 Then
+                    Return Abs(_SharpsOrFlats)
+                Else
+                    Return 0
+                End If
+            End Get
+        End Property
+
+        Shared ReadOnly FlatsValues As Byte() =
+            {0, 255, 254, 253, 252, 251, 250, 249}
+
+        Public ReadOnly Property IsMinor As Boolean
+
+        Sub New(sharps As Byte, flats As Byte, isMinor As Boolean)
+            MyBase.New(MetaEventType.KeySignature, 2)
+
+            Dim sf As Byte
+
+            If sharps > 0 Then
+                _SharpsOrFlats = sharps
+                sf = sharps
+            ElseIf flats > 0 Then
+                _SharpsOrFlats = flats
+                _SharpsOrFlats *= -1
+                sf = FlatsValues(flats)
+            End If
+
+            _IsMinor = isMinor
+
+            With DataList
+                .Add(sf)
+                .Add(If(isMinor, 1, 0))
+            End With
+        End Sub
+
+    End Class
+
+    Public Enum ManufacturerID As UInteger
+        Sequential_Circuits = &H_01000000UI
+        IDP = &H_02000000UI
+        Voyetra_Turtle_Beach_Inc = &H_03000000UI
+        Moog_Music = &H_04000000UI
+        Passport_Designs = &H_05000000UI
+        '...
+        Yamaha_Corporation = &H_43000000UI
+    End Enum
+
+    Public Class SequencerSpecificEvent : Inherits MetaEvent
+        Public ReadOnly Property ID As ManufacturerID
+        Sub New(ID As ManufacturerID, data As Byte())
+            MyBase.New(MetaEventType.SequencerSpecific, GetManufacturerIDBytes(ID).Length + data.Length)
+
+            _ID = ID
+
+            With DataList
+                .AddRange(GetManufacturerIDBytes(ID))
+                .AddRange(data)
+            End With
+        End Sub
+
+    End Class
 
     Public Class Sequence
 
@@ -823,6 +1017,16 @@ Public Class Midi
         '    End Set
         'End Property
 
+        Private _Name As String
+        Public Property Name As String
+            Get
+                Return _Name
+            End Get
+            Protected Set(value As String)
+                _Name = value
+            End Set
+        End Property
+
         Private _Channel As Channel()
         Public Property Channel As Channel()
             Get
@@ -842,7 +1046,6 @@ Public Class Midi
                 _TrackData = value
             End Set
         End Property
-
         Public Property Tempo As Single
 
         Private _IsOpen As Boolean
@@ -895,15 +1098,15 @@ Public Class Midi
         '    IsOpen = True
         'End Sub
 
-        Sub New()
+        Sub New(name As String)
+            Me.Name = name
             ReDim Channel(ChannelValue.Max)
             For chIdx As Integer = 0 To Channel.GetUpperBound(0)
                 Channel(chIdx) = New Channel(Me, chIdx, Midi.Channel.StatusType.Ready)
             Next
-
             Data = New List(Of Byte)
-
             IsOpen = True
+            AddTrackNameEvent(name)
         End Sub
 
         Public Sub Tick(ticks As Long)
@@ -999,6 +1202,12 @@ Public Class Midi
             With Me.Channel(channel)
                 .PitchWheel = pitchWheel
             End With
+        End Sub
+
+        Public Sub AddTrackNameEvent(name As String)
+            If name = String.Empty Then Exit Sub
+
+            AddEvent(New TrackNameEvent(name))
         End Sub
 
         Public Sub AddSetTempoEvent(tempo As Single)
@@ -1187,9 +1396,7 @@ Public Class Midi
     Public Class Note
         Public ReadOnly Property Hz As Single
         Public ReadOnly Property A4 As Single = 440
-
         Public ReadOnly Property Pitch As Single
-
         Public ReadOnly Property Number() As NoteNumber
             Get
                 Dim num As Integer =

@@ -22,13 +22,18 @@ Public Class MidiExporter
 
     Private MidiSequence As Sequence
 
+    'MIDI tracks
+    Private Const Tempo_Track_Key As String = "Tempo"
+    Private Const FM_Track_Key As String = "FM"
+    Private Const PSG_SSG_Track_Key As String = "PSG_SSG"
+    Private Const PCM_Track_Key As String = "PCM"
+
     Private TempoTrack As Track
+    Private FMTrack As Track
+    Private PSGSSGTrack As Track
+    Private PSGSSGTracks As Track()
 
-    Private MidiTrack As Track
-
-    'Added 2021/02/12: Full SegaPCM Midi Output
-    'Private SegaPCMMidiSequence As Sequence
-    Private SegaPCMMidiTrack As Track
+    Private PCMTrack As Track
 
     Public Overloads Property Options As MidiExportOptions
 
@@ -73,23 +78,54 @@ Public Class MidiExporter
         End If
     End Sub
 
-    'Const Pitchbend_Range_in_Semitones = 24
-
     Protected Overrides Sub Start()
+        'Create MIDI sequence
         MidiSequence = New Sequence
 
-        MidiSequence.AddTrack("Tempo", New Track)
-        TempoTrack = MidiSequence.Tracks("Tempo")
+        'Add tracks
+        MidiSequence.AddTrack(Tempo_Track_Key, New Track("Tempo"))
+        TempoTrack = MidiSequence.Tracks(Tempo_Track_Key)
 
-        MidiSequence.AddTrack("Main", New Track)
-        MidiTrack = MidiSequence.Tracks("Main")
+        MidiSequence.AddTrack(FM_Track_Key, New Track("FM"))
+        FMTrack = MidiSequence.Tracks(FM_Track_Key)
+
+        MidiSequence.AddTrack(PSG_SSG_Track_Key, New Track("PSG_SSG"))
+        PSGSSGTrack = MidiSequence.Tracks(PSG_SSG_Track_Key)
+
+        ReDim PSGSSGTracks(2)
+        For trkIdx As Integer = 0 To PSGSSGTracks.GetUpperBound(0)
+            PSGSSGTracks(trkIdx) = New Track($"PSG_SSG {trkIdx:00}")
+        Next
+        For Each track As Track In PSGSSGTracks
+            With track
+                With .Channel(0)
+                    .ChangeProgram(ProgramValue.Lead1Square)
+                    .ChangeVolume(0)
+                End With
+
+                'Set pitch bend range for all channels
+                For chIdx As Integer = 0 To .Channel.GetUpperBound(0)
+                    With .Channel(chIdx)
+                        .ChangePitchBendRange(Options.PitchBendRange, 0)
+                    End With
+                Next
+            End With
+        Next
+
+        ''Added 2021/02/12: Full SegaPCM Midi Output
+        'If SegaPCMChip IsNot Nothing Then
+        '    MidiSequence.AddTrack("SegaPCM", New Track)
+        '    PCMTrack = MidiSequence.Tracks("SegaPCM")
+        'End If
+        MidiSequence.AddTrack(PCM_Track_Key, New Track("PCM"))
+        PCMTrack = MidiSequence.Tracks(PCM_Track_Key)
 
         With TempoTrack
             .AddSetTempoEvent(Options.Tempo)
             .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
         End With
 
-        With MidiTrack
+        With FMTrack
             'Set up channels 1–9 for FM
             For chIdx As Integer = 0 To 8
                 With .Channel(chIdx)
@@ -103,43 +139,41 @@ Public Class MidiExporter
                 .ChangeVolume(Options.Volume)
             End With
 
-            'Set up channels 11–13 to square waves for PSG and SSG tones
-            For chIdx As Integer = 10 To 12
-                With .Channel(chIdx)
-                    .ChangeProgram(ProgramValue.Lead1Square)
-                    .ChangeVolume(0)
-                End With
-            Next
+            ''Set up channels 11–13 to square waves for PSG and SSG tones
+            'For chIdx As Integer = 10 To 12
+            '    With .Channel(chIdx)
+            '        .ChangeProgram(ProgramValue.Lead1Square)
+            '        .ChangeVolume(0)
+            '    End With
+            'Next
 
-            'Set panning for PSG channels for better stereo separation
-            'Tones
-            .Channel(10).ChangePan(ControllerValue.PanLeft75Right25)
-            .Channel(11).ChangePan(ControllerValue.PanCenter)
-            .Channel(12).ChangePan(ControllerValue.PanLeft25Right75)
+            ''Set panning for PSG channels for better stereo separation
+            ''Tones
+            '.Channel(10).ChangePan(ControllerValue.PanLeft75Right25)
+            '.Channel(11).ChangePan(ControllerValue.PanCenter)
+            '.Channel(12).ChangePan(ControllerValue.PanLeft25Right75)
 
-            'Noise
-            .Channel(13).ChangePan(ControllerValue.PanCenter)
+            ''Noise
+            '.Channel(13).ChangePan(ControllerValue.PanCenter)
 
-            'Set pitch bend range for all channels
-            For chIdx As Integer = 0 To MidiTrack.Channel.GetUpperBound(0)
-                With .Channel(chIdx)
-                    .ChangePitchBendRange(Options.PitchBendRange, 0)
-                End With
-            Next
+            ''Set pitch bend range for all channels
+            'For chIdx As Integer = 0 To FMTrack.Channel.GetUpperBound(0)
+            '    With .Channel(chIdx)
+            '        .ChangePitchBendRange(Options.PitchBendRange, 0)
+            '    End With
+            'Next
 
         End With
 
-        'With MidiTrack
-        '    .AddSetTempoEvent(Options.Tempo)
-        '    .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
 
-        '    'Set up channels 1–9 for FM
-        '    For chIdx As Integer = 0 To 8
-        '        With .Channel(chIdx)
-        '            .ChangeProgram(ProgramValue.Lead8BassLead) 'Bass & Lead is a good all-rounder
-        '            .ChangeVolume(Options.Volume)
-        '        End With
-        '    Next
+        'With PSGSSGTrack
+        '    ''Set up channels 1–9 for FM
+        '    'For chIdx As Integer = 0 To 8
+        '    '    With .Channel(chIdx)
+        '    '        .ChangeProgram(ProgramValue.Lead8BassLead) 'Bass & Lead is a good all-rounder
+        '    '        .ChangeVolume(Options.Volume)
+        '    '    End With
+        '    'Next
 
         '    'Set up channel 10 for percussion
         '    With .Channel(9)
@@ -164,7 +198,7 @@ Public Class MidiExporter
         '    .Channel(13).ChangePan(ControllerValue.PanCenter)
 
         '    'Set pitch bend range for all channels
-        '    For chIdx As Integer = 0 To MidiTrack.Channel.GetUpperBound(0)
+        '    For chIdx As Integer = 0 To FMTrack.Channel.GetUpperBound(0)
         '        With .Channel(chIdx)
         '            .ChangePitchBendRange(Options.PitchBendRange, 0)
         '        End With
@@ -172,25 +206,14 @@ Public Class MidiExporter
 
         'End With
 
-        'Added 2021/02/12: Full SegaPCM Midi Output
-        If SegaPCMChip IsNot Nothing Then
-            MidiSequence.AddTrack("SegaPCM", New Track)
-            SegaPCMMidiTrack = MidiSequence.Tracks("SegaPCM")
-
-            'With SegaPCMMidiTrack
-            '    .AddSetTempoEvent(Options.Tempo)
-            '    .AddTimeSignatureEvent(Options.Numerator, Math.Log(Options.Denominator, 2), 24, 8)
-            'End With
-        End If
-
     End Sub
 
     Protected Overrides Sub Finish()
-        MidiTrack.Close()
+        FMTrack.Close()
 
         'Added 2021/02/12: Full SegaPCM Midi Output
         If SegaPCMChip IsNot Nothing Then
-            SegaPCMMidiTrack.Close()
+            PCMTrack.Close()
         End If
     End Sub
 
@@ -219,6 +242,9 @@ Public Class MidiExporter
         With mf
             For Each kvp As KeyValuePair(Of String, Track) In MidiSequence.Tracks
                 .Tracks.Add(kvp.Value)
+            Next
+            For Each track As Track In PSGSSGTracks
+                .Tracks.Add(track)
             Next
         End With
         mf.Save(fileName)
@@ -251,6 +277,10 @@ Public Class MidiExporter
         If wholeTicks > 0 Then
             MidiSequence.Tick(wholeTicks)
 
+            For Each track As Track In PSGSSGTracks
+                track.Tick(wholeTicks)
+            Next
+
             'Added 2021/02/12: Full SegaPCM Midi Output
             If SegaPCMChip IsNot Nothing Then
                 'SegaPCMMidiTrack.Tick(wholeTicks)
@@ -281,7 +311,7 @@ Public Class MidiExporter
         MyBase.ProcessWriteFromDataBank()
 
         'TEST: Convert data bank offsets to MIDI percussion
-        With MidiTrack.Channel(9)
+        With FMTrack.Channel(9)
             Dim offset As Long =
                 DataBankOffset - 1
             Select Case offset
@@ -377,22 +407,26 @@ Public Class MidiExporter
                 Exit Sub
             End If
 
-            Dim midichIdx As Byte =
-                PSG_SSG_Base_Midi_Ch_Num + .Index
+            Dim trackIdx As Byte =
+                .Index
+            Dim track As Track =
+                 PSGSSGTracks(trackIdx)
+            Dim midiCh As Channel =
+                track.Channel(.Index)
 
             Dim fNote As Single =
                 PSG.GetFNote(.FNum, .Chip.IntSampleClockFreq)
 
             If .FNum < (.Chip.IntSampleClockFreq / (.Chip.ExtSampleClockFreq / 2)) Then
-                MidiTrack.Channel(midichIdx).StopNote(0)
+                midiCh.StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
                 thisPSGStatus.NoteOn(.Index) = False
             Else
                 Dim note As New Note(fNote)
 
                 If thisPSGStatus.NoteOn(.Index) Then
-                    MidiTrack.Channel(midichIdx).BendPitch(note, 0)
+                    midiCh.BendPitch(note, 0) 'FMTrack.Channel(midichIdx).BendPitch(note, 0)
                 Else
-                    MidiTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+                    midiCh.PlayNote(note, Options.Velocity, 0) 'FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
                     thisPSGStatus.NoteOn(.Index) = True
                 End If
 
@@ -400,6 +434,35 @@ Public Class MidiExporter
 
             thisPSGStatus.OldFNum(.Index) = .FNum
             thisPSGStatus.OldFNote(.Index) = fNote
+
+            ''Don't play notes on tone channel 2 if the noise rate source is tone 2
+            'If (.Index = PSG.ChValue.Tone3) And (.Chip.Registers.NoiseRate = PSG.NoiseRate.Tone3) Then
+            '    Exit Sub
+            'End If
+
+            'Dim midichIdx As Byte =
+            '    PSG_SSG_Base_Midi_Ch_Num + .Index
+
+            'Dim fNote As Single =
+            '    PSG.GetFNote(.FNum, .Chip.IntSampleClockFreq)
+
+            'If .FNum < (.Chip.IntSampleClockFreq / (.Chip.ExtSampleClockFreq / 2)) Then
+            '    PSGSSGTrack.Channel(midichIdx).StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
+            '    thisPSGStatus.NoteOn(.Index) = False
+            'Else
+            '    Dim note As New Note(fNote)
+
+            '    If thisPSGStatus.NoteOn(.Index) Then
+            '        PSGSSGTrack.Channel(midichIdx).BendPitch(note, 0) 'FMTrack.Channel(midichIdx).BendPitch(note, 0)
+            '    Else
+            '        PSGSSGTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0) 'FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+            '        thisPSGStatus.NoteOn(.Index) = True
+            '    End If
+
+            'End If
+
+            'thisPSGStatus.OldFNum(.Index) = .FNum
+            'thisPSGStatus.OldFNote(.Index) = fNote
         End With
     End Sub
 
@@ -407,18 +470,22 @@ Public Class MidiExporter
         {127, 101, 80, 64, 50, 40, 32, 25, 20, 16, 13, 10, 8, 6, 4, 0}
     Protected Overrides Sub PSG_ToneAttenChanged(ByRef ch As PSG.PSGChannel)
         With ch
-            Dim midichIdx As Byte =
-                PSG_SSG_Base_Midi_Ch_Num + .Index
+            Dim trackIdx As Byte =
+                .Index
+            Dim track As Track =
+                 PSGSSGTracks(trackIdx)
+            Dim midiCh As Channel =
+                track.Channel(.Index)
 
             If .Atten = PSG_Atten_Max Then
-                MidiTrack.Channel(midichIdx).StopNote(0)
+                midiCh.StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
                 thisPSGStatus.NoteOn(.Index) = False
             Else
                 Dim vol As Byte =
                     If(.Atten = 15, 0, PSG_SSG_Midi_Ref_Vol - (.Atten * 8))
                 'Dim vol As Byte =
                 '    PSGLevelToMidiVol(atten)
-                MidiTrack.Channel(midichIdx).ChangeVolume(vol)
+                midiCh.ChangeVolume(vol) 'FMTrack.Channel(midichIdx).ChangeVolume(vol)
 
                 'If attenuation decreases by the specified amount or more then play a new note
                 Dim attenDelta As Integer =
@@ -431,7 +498,7 @@ Public Class MidiExporter
                     Dim fnote As Single =
                         PSG.GetFNote(.FNum, .Chip.IntSampleClockFreq)
                     Dim note As New Note(fnote)
-                    MidiTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+                    midiCh.PlayNote(note, Options.Velocity, 0) 'FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
                     thisPSGStatus.NoteOn(.Index) = True
 
                     thisPSGStatus.OldFNum(.Index) = .FNum
@@ -439,16 +506,61 @@ Public Class MidiExporter
                 End If
             End If
             thisPSGStatus.OldAtten(.Index) = .Atten
+
+
+            'Dim midichIdx As Byte =
+            '    PSG_SSG_Base_Midi_Ch_Num + .Index
+
+            'If .Atten = PSG_Atten_Max Then
+            '    PSGSSGTrack.Channel(midichIdx).StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
+            '    thisPSGStatus.NoteOn(.Index) = False
+            'Else
+            '    Dim vol As Byte =
+            '        If(.Atten = 15, 0, PSG_SSG_Midi_Ref_Vol - (.Atten * 8))
+            '    'Dim vol As Byte =
+            '    '    PSGLevelToMidiVol(atten)
+            '    PSGSSGTrack.Channel(midichIdx).ChangeVolume(vol) 'FMTrack.Channel(midichIdx).ChangeVolume(vol)
+
+            '    'If attenuation decreases by the specified amount or more then play a new note
+            '    Dim attenDelta As Integer =
+            '        CInt(thisPSGStatus.OldAtten(.Index)) - CInt(.Atten)
+            '    If Not thisPSGStatus.NoteOn(.Index) AndAlso
+            '        thisPSGStatus.OldAtten(.Index) = PSG_Atten_Max AndAlso
+            '        .Atten <> PSG_Atten_Max OrElse
+            '        attenDelta >= 2 Then
+
+            '        Dim fnote As Single =
+            '            PSG.GetFNote(.FNum, .Chip.IntSampleClockFreq)
+            '        Dim note As New Note(fnote)
+            '        PSGSSGTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0) 'FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+            '        thisPSGStatus.NoteOn(.Index) = True
+
+            '        thisPSGStatus.OldFNum(.Index) = .FNum
+            '        thisPSGStatus.OldFNote(.Index) = fnote
+            '    End If
+            'End If
+            'thisPSGStatus.OldAtten(.Index) = .Atten
         End With
     End Sub
 
     Protected Overrides Sub PSG_NoiseTypeChanged(ByRef chip As PSG.Chip)
         If chip.Registers.NoiseRate = PSG.NoiseRate.Tone3 Then
             ' Stop Tone3
-            Dim midichIdx As Byte =
-                PSG_SSG_Base_Midi_Ch_Num + 2
-            MidiTrack.Channel(midichIdx).StopNote(0)
+            Dim trackIdx As Byte =
+                2
+            Dim track As Track =
+                 PSGSSGTracks(trackIdx)
+            Dim midiCh As Channel =
+                track.Channel(0)
+
+            midiCh.StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
             thisPSGStatus.NoteOn(2) = False
+
+            '' Stop Tone3
+            'Dim midichIdx As Byte =
+            '    PSG_SSG_Base_Midi_Ch_Num + 2
+            'PSGSSGTrack.Channel(midichIdx).StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
+            'thisPSGStatus.NoteOn(2) = False
         End If
     End Sub
 
@@ -457,11 +569,11 @@ Public Class MidiExporter
             Dim midichIdx As Byte = 9
             'Play Noise
             If .Atten = PSG_Atten_Max Then
-                MidiTrack.Channel(midichIdx).StopNote(0)
+                PSGSSGTrack.Channel(midichIdx).StopNote(0) 'FMTrack.Channel(midichIdx).StopNote(0)
             Else
                 Dim vel As Byte =
                 If(.Atten = 15, 0, PSG_SSG_Midi_Ref_Vol - (.Atten * 8))
-                MidiTrack.Channel(midichIdx).PlayNote(New Note(Percussion.Cabasa, 0), vel, 0)
+                PSGSSGTrack.Channel(midichIdx).PlayNote(New Note(Percussion.Cabasa, 0), vel, 0) 'FMTrack.Channel(midichIdx).PlayNote(New Note(Percussion.Cabasa, 0), vel, 0)
             End If
         End With
     End Sub
@@ -499,7 +611,7 @@ Public Class MidiExporter
 
         Dim midichIdx As Byte = 9
 
-        With MidiTrack.Channel(midichIdx)
+        With FMTrack.Channel(midichIdx)
             If regs.BD AndAlso BDVel <> 0 Then
                 .PlayNote(New Note(Percussion.BassDrum1, 0), BDVel, 0)
             Else
@@ -541,7 +653,7 @@ Public Class MidiExporter
 
                 Dim midichIdx As Byte =
                     .Index
-                MidiTrack.Channel(midichIdx).BendPitch(note, 0)
+                FMTrack.Channel(midichIdx).BendPitch(note, 0)
             End If
             thisOPLLStatus.WasPrevFNumWriteHi(.Index) = False
         End With
@@ -554,9 +666,9 @@ Public Class MidiExporter
 
             Select Case .Sus
                 Case True
-                    MidiTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, 64)
+                    FMTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, 64)
                 Case False
-                    MidiTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, 0)
+                    FMTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, 0)
             End Select
 
             Select Case .Key
@@ -568,17 +680,17 @@ Public Class MidiExporter
                     Dim note As New Note(fNote)
 
                     If thisOPLLStatus.NoteOn(.Index) Then
-                        MidiTrack.Channel(midichIdx).BendPitch(note, 0)
+                        FMTrack.Channel(midichIdx).BendPitch(note, 0)
                     Else
                         Dim vel As Integer =
                             If(.Vol = 15, 0, 127 - (.Vol * 8))
 
-                        MidiTrack.Channel(midichIdx).PlayNote(note, vel, 0)
+                        FMTrack.Channel(midichIdx).PlayNote(note, vel, 0)
                         thisOPLLStatus.NoteOn(.Index) = True
                     End If
 
                 Case False
-                    MidiTrack.Channel(midichIdx).StopNote(0)
+                    FMTrack.Channel(midichIdx).StopNote(0)
                     thisOPLLStatus.NoteOn(.Index) = False
             End Select
             thisOPLLStatus.WasPrevFNumWriteHi(.Index) = True
@@ -633,7 +745,7 @@ Public Class MidiExporter
         End With
 
         'Add to midi track
-        With MidiTrack.Channel(midichIdx)
+        With FMTrack.Channel(midichIdx)
             .ChangeProgram(midiProg)
             .ChangeVolume(midiVol)
         End With
@@ -661,7 +773,7 @@ Public Class MidiExporter
             Dim ch As OPM.OPMChannel =
                 chip.Channel(.Ch)
             Dim midiCh As Channel =
-                MidiTrack.Channel(.Ch)
+                FMTrack.Channel(.Ch)
             If .KeyOn = 0 Then
                 midiCh.StopNote(0)
             Else
@@ -695,7 +807,7 @@ Public Class MidiExporter
                 End With
             Next
             Dim midiCh As Channel =
-                MidiTrack.Channel(OPN_Base_Midi_Ch_Num + ch.Index)
+                FMTrack.Channel(OPN_Base_Midi_Ch_Num + ch.Index)
             midiCh.ChangeVolume(OPM_Midi_Ref_Vol - tl)
         End If
     End Sub
@@ -711,7 +823,7 @@ Public Class MidiExporter
     Private Sub OPM_KeyCodeOrFractionChanged(ByRef ch As OPM.OPMChannel)
         With ch
             Dim midiCh As Channel =
-                MidiTrack.Channel(OPM_Base_Midi_Ch_Num + .Index)
+                FMTrack.Channel(OPM_Base_Midi_Ch_Num + .Index)
             If midiCh.NoteOn(0) = True Then
                 'Dim fnote As Single =
                 '    OPM.GetFNote(.Note, .Octave, .KeyFrac, .Op(3).Mul, .Chip.MasterClockFreq)
@@ -740,7 +852,7 @@ Public Class MidiExporter
 
             Dim midiChIdx As Integer =
                 OPN_Base_Midi_Ch_Num + .Index
-            MidiTrack.AddPanChangeEvent(midiChIdx, pan)
+            FMTrack.AddPanChangeEvent(midiChIdx, pan)
         End With
 
     End Sub
@@ -823,7 +935,7 @@ Public Class MidiExporter
         'Special handing for Channel 3 Special Mode
         If isCh3SpMode Then
             For opIdx As Integer = 0 To 2
-                With MidiTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + opIdx)
+                With FMTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + opIdx)
                     If thisOPNStatus.OpOn(chIdx, opIdx) Then
                         If thisOPNStatus.PrevOpOn(chIdx, opIdx) = False Then
                             Dim op As OPN.OPNOp =
@@ -841,7 +953,7 @@ Public Class MidiExporter
         End If
 
         Dim midiCh As Channel =
-            MidiTrack.Channel(OPN_Base_Midi_Ch_Num + chIdx)
+            FMTrack.Channel(OPN_Base_Midi_Ch_Num + chIdx)
 
         If thisOPNStatus.OpOn(chIdx, 3) Then
             'midiCh.PlayNote(New Note(fNote(3)), 127 - ch.Op(3).TL, 0)
@@ -862,7 +974,7 @@ Public Class MidiExporter
         With ch
             If thisOPNStatus.KeyOn(.Index) Then
                 Dim midiCh As Channel =
-                    MidiTrack.Channel(OPN_Base_Midi_Ch_Num + .Index)
+                    FMTrack.Channel(OPN_Base_Midi_Ch_Num + .Index)
                 Dim fNote As Single =
                     OPN.GetFNote(.Block, .FNum, .Op(3).DT, .Op(3).Multi, .Chip.IntSampleClockFreq)
                 midiCh.BendPitch(fNote, 0)
@@ -877,10 +989,10 @@ Public Class MidiExporter
         With chip.Registers
             If (.Ch3Mode = OPN.Ch3Mode.Normal) And (oldCh3Mode <> OPN.Ch3Mode.Normal) Then
                 Dim midiCh As Channel =
-                    MidiTrack.Channel(OPN_Base_Midi_Ch_Num + 2)
+                    FMTrack.Channel(OPN_Base_Midi_Ch_Num + 2)
                 midiCh.StopNote(0)
                 For i As Integer = 0 To 2
-                    midiCh = MidiTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + i)
+                    midiCh = FMTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + i)
                     midiCh.StopNote(0)
                 Next
             End If
@@ -901,7 +1013,7 @@ Public Class MidiExporter
                     OPN.GetFNote(block, fnum, .DT, .Multi, chip.IntSampleClockFreq)
 
                 Dim midiCh As Channel =
-                    MidiTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + opIdx)
+                    FMTrack.Channel(OPN_Ch3Sp_Base_Midi_Ch_Num + opIdx)
                 midiCh.BendPitch(fNote, 0)
             End If
         End With
@@ -929,7 +1041,7 @@ Public Class MidiExporter
             Dim midiVol As Byte =
                 GetMidiVolume(dB)
             Dim midiCh As Channel =
-                MidiTrack.Channel(OPN_Base_Midi_Ch_Num + op.Channel.Index)
+                FMTrack.Channel(OPN_Base_Midi_Ch_Num + op.Channel.Index)
             midiCh.ChangeVolume(midiVol)
         End If
 
@@ -939,7 +1051,7 @@ Public Class MidiExporter
         With op
             Dim midichIdx As Integer =
                 OPN_Base_Midi_Ch_Num + .Channel.Index
-            MidiTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundAttackTime, (31 - .AR) * 8)
+            FMTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundAttackTime, (31 - .AR) * 8)
         End With
     End Sub
 
@@ -947,7 +1059,7 @@ Public Class MidiExporter
         With op
             Dim midichIdx As Integer =
                 OPN_Base_Midi_Ch_Num + .Channel.Index
-            MidiTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, .RR * 8)
+            FMTrack.AddControllerChangeEvent(midichIdx, ControllerType.SoundReleaseTime, .RR * 8)
         End With
     End Sub
 
@@ -964,7 +1076,7 @@ Public Class MidiExporter
             End If
 
             Dim midiCh As Channel =
-                MidiTrack.Channel(OPN_Base_Midi_Ch_Num + .Index)
+                FMTrack.Channel(OPN_Base_Midi_Ch_Num + .Index)
             midiCh.ChangePan(pan)
         End With
     End Sub
@@ -1002,7 +1114,7 @@ Public Class MidiExporter
 
         Dim midichIdx As Byte = 9
 
-        With MidiTrack.Channel(midichIdx)
+        With FMTrack.Channel(midichIdx)
             If regs.BD Then
                 .PlayNote(New Note(Percussion.BassDrum1, 0), BDVel, 0)
             Else
@@ -1046,7 +1158,7 @@ Public Class MidiExporter
         End With
 
         Dim midiCh As Channel =
-            MidiTrack.Channel(op.Channel.Index)
+            FMTrack.Channel(op.Channel.Index)
 
         'Add to midi track
         With midiCh
@@ -1066,7 +1178,7 @@ Public Class MidiExporter
                 Dim note As New Note(fNote)
 
                 Dim midiCh As Channel =
-                    MidiTrack.Channel(.Index)
+                    FMTrack.Channel(.Index)
                 midiCh.BendPitch(note, 0)
             End If
             thisOPLStatus.WasPrevFNumWriteHi(.Index) = False
@@ -1076,7 +1188,7 @@ Public Class MidiExporter
     Protected Overrides Sub OPL_KeyOnBlockFNumHiChanged(ByRef ch As OPL.OPLChannel)
         With ch
             Dim midiCh As Channel =
-                MidiTrack.Channel(.Index)
+                FMTrack.Channel(.Index)
 
             Select Case .KeyOn
                 Case True
@@ -1124,7 +1236,7 @@ Public Class MidiExporter
                 PSG_SSG_Base_Midi_Ch_Num + chIdx
             If toneEn(chIdx) = False Then
                 If thisSSGStatus.NoteOn(chIdx) Then
-                    MidiTrack.Channel(midichIdx).StopNote(0)
+                    FMTrack.Channel(midichIdx).StopNote(0)
                     thisSSGStatus.NoteOn(chIdx) = False
                 End If
             End If
@@ -1139,13 +1251,13 @@ Public Class MidiExporter
 
         If level = 0 Then
             If thisSSGStatus.NoteOn(chIdx) Then
-                MidiTrack.Channel(midichIdx).StopNote(0)
+                FMTrack.Channel(midichIdx).StopNote(0)
                 thisSSGStatus.NoteOn(chIdx) = False
             End If
         Else
             Dim vol As Single =
                 SSGLevelToMidiVol(level)
-            MidiTrack.Channel(midichIdx).ChangeVolume(vol)
+            FMTrack.Channel(midichIdx).ChangeVolume(vol)
 
             If (thisSSGStatus.OldLevel(chIdx) = 0) And (level <> 0) Then
                 With chip.Registers
@@ -1153,7 +1265,7 @@ Public Class MidiExporter
                         Dim fNote As Single =
                             SSG.GetFNote(.FNum(chIdx), chip.IntSampleClockFreq)
                         Dim note As New Note(fNote)
-                        MidiTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+                        FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
                         thisSSGStatus.NoteOn(chIdx) = True
                     End If
                 End With
@@ -1205,15 +1317,15 @@ Public Class MidiExporter
             SSG.GetFNote(fnum, chip.IntSampleClockFreq)
 
         If fnum < (chip.IntSampleClockFreq / (chip.ExtSampleClockFreq / 2)) Then
-            MidiTrack.Channel(midichIdx).StopNote(0)
+            FMTrack.Channel(midichIdx).StopNote(0)
             thisSSGStatus.NoteOn(chIdx) = False
         Else
             Dim note As New Note(fnote)
 
             If thisSSGStatus.NoteOn(chIdx) Then
-                MidiTrack.Channel(midichIdx).BendPitch(note, 0)
+                FMTrack.Channel(midichIdx).BendPitch(note, 0)
             Else
-                MidiTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
+                FMTrack.Channel(midichIdx).PlayNote(note, Options.Velocity, 0)
                 thisSSGStatus.NoteOn(chIdx) = True
             End If
 
@@ -1261,7 +1373,7 @@ Public Class MidiExporter
                     Dim pan As Integer =
                         ControllerValue.PanCenter - panL + panR
                     Dim midiCh As Channel =
-                        SegaPCMMidiTrack.Channel(.Index)
+                        PCMTrack.Channel(.Index)
                     midiCh.ChangePan(pan)
                 End If
 
@@ -1306,7 +1418,7 @@ Public Class MidiExporter
                                     PCMVoiceDict(key)
 
                                 Dim midiCh As Channel =
-                                    SegaPCMMidiTrack.Channel(.Index)
+                                    PCMTrack.Channel(.Index)
 
                                 '    midiCh.ChangeProgram(mv.Program)
 
@@ -1340,7 +1452,7 @@ Public Class MidiExporter
                                 vel = Math.Min(vel, VelocityValue.Max)
 
                                 Dim midiCh As Channel =
-                                    SegaPCMMidiTrack.Channel(9)
+                                    PCMTrack.Channel(9)
 
                                 midiCh.StopNote(.Index)
                                 midiCh.PlayNote(New Note(perc, 0), vel, .Index)
@@ -1382,7 +1494,7 @@ Public Class MidiExporter
                     Dim noteIndex As Integer = 0
                     For Each note As Note In mv.Note
                         Dim midiCh As Channel =
-                            SegaPCMMidiTrack.Channel(.Index)
+                            PCMTrack.Channel(.Index)
                         midiCh.StopNote(noteIndex)
                         noteIndex += 1
                     Next
@@ -1390,7 +1502,7 @@ Public Class MidiExporter
                 ElseIf TypeOf (voi) Is PercussiveMidiVoice Then
 
                     Dim midiCh As Channel =
-                        SegaPCMMidiTrack.Channel(9)
+                        PCMTrack.Channel(9)
 
                     midiCh.StopNote(.Index)
 
